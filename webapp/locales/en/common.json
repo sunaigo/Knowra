@@ -1,0 +1,90 @@
+{
+  "nav": {
+    "home": "Home",
+    "kbs": "Knowledge Bases",
+    "models": "Models",
+    "teams": "Teams"
+  },
+  "user": {
+    "myAccount": "My Account",
+    "myTeams": "My Teams",
+    "logout": "Logout"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "common": {
+    "search": "Search...",
+    "create": "Create",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "name": "Name",
+    "description": "Description",
+    "createdAt": "Created At",
+    "actions": "Actions",
+    "owner": "Owner",
+    "role": "Role",
+    "upload": "Upload",
+    "tableName": "Name",
+    "tableChunkCount": "Chunks",
+    "tableStatus": "Status",
+    "tableCreatedAt": "Created At",
+    "chunk": "Chunk",
+    "overlap": "Overlap",
+    "confirm": "Confirm",
+    "actionSettings": "Settings",
+    "actionPreview": "Preview",
+    "actionDelete": "Delete",
+    "actionDeleting": "Deleting...",
+    "buttonCancel": "Cancel",
+    "buttonConfirm": "Confirm",
+    "confirmReparseTitle": "Confirm Reparse",
+    "confirmReparseDescription": "This document has been processed with the current settings. Are you sure you want to re-parse it?",
+    "pageSize": "Page Size",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All"
+  },
+  "documentList": {
+    "buttonUploadDocument": "Upload Document",
+    "buttonEdit": "Edit KB",
+    "documentsTitle": "Documents",
+    "documentsDescription": "List of documents in this knowledge base.",
+    "tooltipParse": "Parse",
+    "tooltipPause": "Pause parsing",
+    "tooltipProcessing": "Processing...",
+    "tooltipSettings": "Settings",
+    "tooltipPreview": "Preview",
+    "resumeFromBreakpoint": "Resume from breakpoint",
+    "startFromScratch": "Start from scratch"
+  },
+  "documentChunks": {
+    "title": "Chunks",
+    "totalChunks": "{{count}} chunks in total",
+    "chunkLabel": "Chunk #{{id}}",
+    "chars": "chars",
+    "loadMore": "Load full content",
+    "reprocess": "Reprocess",
+    "reprocessing": "Reprocessing...",
+    "resumeProcessing": "Resume",
+    "settings": "Settings",
+    "error": "An error occurred while fetching document details.",
+    "chunkId": "Chunk ID",
+    "chunkLength": "Length",
+    "reprocessStart": "Reprocessing started...",
+    "reprocessFail": "Failed to start reprocessing.",
+    "progress": "{{done}} / {{total}} chunks processed",
+    "noChunks": "This document has not been chunked yet.",
+    "loading": "Loading..."
+  },
+  "loginPage": {
+    "title": "Login",
+    "username": "Username",
+    "password": "Password",
+    "login": "Login",
+    "register": "Register"
+  }
+} 

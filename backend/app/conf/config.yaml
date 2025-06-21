@@ -1,0 +1,47 @@
+# Knowra 后端统一配置
+
+# 数据库配置
+sqlalchemy:
+  url: "sqlite:///./knowra.db"  # 数据库连接URL
+  sql_log_enable: false          # 是否打印SQL日志（建议仅开发环境开启）
+
+# Embedding引擎配置
+embedding:
+  default: "ollama"  # 可选：ollama/openai，默认embedding引擎
+  parallel: 3        # embedding并行度，默认3
+  ollama:
+    url: "http://127.0.0.1:11434"  # Ollama服务地址
+    model: "all-minilm"  # Ollama模型名
+  openai:
+    api_key: "sk-xxx"  # OpenAI API密钥
+    base_url: "https://api.openai.com/v1"  # OpenAI API地址
+
+# CORS配置
+cors:
+  allow_origins:
+    - "*"         # 允许的来源
+  allow_credentials: true  # 允许携带凭证
+  allow_methods:
+    - "*"         # 允许的方法
+  allow_headers:
+    - "*"         # 允许的请求头
+
+# JWT密钥
+jwt:
+  secret_key: "knowra-secret-key"  # JWT密钥
+  algorithm: "HS256"              # 加密算法
+  access_token_expire_minutes: 1440  # token过期时间（分钟）
+
+# 文件上传
+upload:
+  dir: "uploads"      # 上传目录
+  max_size_mb: 50     # 单文件最大MB
+
+# 文件处理队列配置
+file_process:
+  max_workers: 2      # 最大并发处理数
+  poll_interval: 2    # 轮询间隔（秒）
+
+# 默认切割参数
+chunk_size: 10000  # 默认切割块大小
+overlap: 200      # 默认重叠 

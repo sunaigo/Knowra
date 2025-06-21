@@ -1,0 +1,152 @@
+{
+  "nav": {
+    "home": "首页",
+    "kbs": "知识库",
+    "models": "模型",
+    "teams": "团队"
+  },
+  "user": {
+    "myAccount": "我的账户",
+    "myTeams": "我的团队",
+    "logout": "退出登录"
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "系统"
+  },
+  "common": {
+    "search": "搜索...",
+    "create": "创建",
+    "delete": "删除",
+    "save": "保存",
+    "cancel": "取消",
+    "edit": "编辑",
+    "name": "名称",
+    "description": "描述",
+    "createdAt": "创建时间",
+    "actions": "操作",
+    "owner": "所有者",
+    "role": "角色",
+    "upload": "上传",
+    "tableName": "名称",
+    "tableChunkCount": "分块数",
+    "tableStatus": "状态",
+    "tableCreatedAt": "创建时间",
+    "chunk": "分块",
+    "overlap": "重叠",
+    "confirm": "确认",
+    "actionSettings": "参数设置",
+    "actionPreview": "预览",
+    "actionDelete": "删除",
+    "actionDeleting": "删除中...",
+    "buttonCancel": "取消",
+    "buttonConfirm": "确认",
+    "confirmReparseTitle": "确认重新解析",
+    "confirmReparseDescription": "该文档已使用当前配置处理过。您确定要重新解析吗？",
+    "pageSize": "每页数量",
+    "expandAll": "展开所有",
+    "collapseAll": "折叠所有"
+  },
+  "documentList": {
+    "buttonUploadDocument": "上传文档",
+    "buttonEdit": "编辑知识库",
+    "documentsTitle": "文档",
+    "documentsDescription": "该知识库中的文档列表。",
+    "tooltipParse": "解析",
+    "tooltipPause": "暂停解析",
+    "tooltipProcessing": "处理中...",
+    "tooltipSettings": "设置",
+    "tooltipPreview": "预览",
+    "resumeFromBreakpoint": "从断点处恢复",
+    "startFromScratch": "从头开始解析"
+  },
+  "documentChunks": {
+    "title": "分块",
+    "totalChunks": "共 {{count}} 个分块",
+    "chunkLabel": "分块 #{{id}}",
+    "chars": "字符",
+    "loadMore": "加载完整内容",
+    "reprocess": "重新解析",
+    "reprocessing": "解析中...",
+    "resumeProcessing": "继续解析",
+    "settings": "修改参数",
+    "error": "获取文档详情时发生错误。",
+    "chunkId": "分块ID",
+    "chunkLength": "长度",
+    "reprocessStart": "已开始重新解析...",
+    "reprocessFail": "开始重新解析失败。",
+    "progress": "已解析 {{done}} / {{total}} 个分块",
+    "noChunks": "该文档还未被分块。",
+    "loading": "加载中..."
+  },
+  "loginPage": {
+    "title": "登录",
+    "username": "用户名",
+    "password": "密码",
+    "login": "登录",
+    "register": "注册"
+  },
+  "registerPage": {
+    "title": "注册新账号",
+    "description": "注册以开始使用 Knowra。",
+    "email_placeholder": "请输入邮箱（选填）",
+    "registering": "注册中...",
+    "register_failed": "注册失败",
+    "have_account": "已有账号？",
+    "register_required": "用户名和密码为必填项"
+  },
+  "sidebar": {
+    "teams": "团队",
+    "add_team": "添加团队",
+    "projects": "项目",
+    "view_project": "查看项目",
+    "share_project": "分享项目",
+    "delete_project": "删除项目",
+    "enterprise": "企业版",
+    "startup": "初创版",
+    "free": "免费版",
+    "playground": "游乐场",
+    "history": "历史",
+    "starred": "收藏",
+    "documentation": "文档",
+    "introduction": "介绍",
+    "get_started": "快速开始",
+    "tutorials": "教程",
+    "changelog": "更新日志",
+    "general": "通用",
+    "team": "团队",
+    "limits": "限制",
+    "design_engineering": "设计 & 工程",
+    "sales_marketing": "销售 & 市场",
+    "travel": "旅行",
+    "knowledgeBase": {
+      "title": "知识库管理",
+      "list": "知识库列表",
+      "create": "新建知识库"
+    },
+    "model": {
+      "title": "模型管理",
+      "list": "模型列表"
+    },
+    "user": {
+      "title": "用户管理",
+      "list": "用户列表",
+      "teams": "团队列表",
+      "roles": "角色管理"
+    }
+  },
+  "breadcrumb": {
+    "home": "首页",
+    "kb": "知识库",
+    "documents": "文档",
+    "building": "应用搭建",
+    "data_fetching": "数据获取"
+  },
+  "pagination": {
+    "rowsPerPage": "每页条数",
+    "previous": "上一页",
+    "next": "下一页",
+    "itemsPerPage": "每页条数"
+  }
+} 
