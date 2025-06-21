@@ -1,21 +1,45 @@
 version: '3.8'
+
 services:
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
+      # Mount the application code for development hot-reloading.
+      # For production, you might want to remove this line.
       - ./backend/app:/app/app
-      - ./backend/requirements.txt:/app/requirements.txt
-    environment:
-      - TZ=Asia/Shanghai
+      # Persist ChromaDB data using a named volume
+      - chroma_data:/app/chroma_data
+      # Persist vector store data
+      - vector_store:/app/vector_store
+    env_file:
+      - .env
+    networks:
+      - knowra_net
+    restart: unless-stopped
+
   frontend:
-    image: node:20
-    working_dir: /app
-    volumes:
-      - ./frontend:/app
-    command: sh -c "npm install && npm run dev -- --host"
+    build:
+      context: ./webapp # Corrected path to frontend code
+      dockerfile: Dockerfile
     ports:
-      - "5173:5173"
-    environment:
-      - TZ=Asia/Shanghai
+      - "3000:3000" # Corrected port for Next.js
+    volumes:
+      # Mount the source code for development hot-reloading
+      - ./webapp:/app
+      # Anonymize the node_modules directory to use the one from the image
+      - /app/node_modules
+    networks:
+      - knowra_net
+    restart: unless-stopped
+
+networks:
+  knowra_net:
+    driver: bridge
+
+volumes:
+  chroma_data:
+  vector_store:

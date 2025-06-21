@@ -73,6 +73,7 @@ After the services have started, visit `http://localhost:3000` to see the fronte
 cd backend
 
 # 2. (Recommended) Create and activate a virtual environment
+# It is highly recommended to use Python 3.12 for this project.
 python -m venv venv
 source venv/bin/activate  # on Windows, use `venv\Scripts\activate`
 

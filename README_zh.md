@@ -73,6 +73,7 @@ docker-compose up --build
 cd backend
 
 # 2. (推荐) 创建并激活虚拟环境
+# (推荐) 本项目强烈建议使用 Python 3.12 版本。
 python -m venv venv
 source venv/bin/activate  # on Windows, use `venv\Scripts\activate`
 
