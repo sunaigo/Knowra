@@ -141,7 +141,7 @@ export default function KnowledgeBasePage() {
         return (
           <div>
             <div
-              className="cursor-pointer font-medium text-blue-600 hover:underline"
+              className="cursor-pointer font-medium hover:underline"
               onClick={() => router.push(`/kb/${kb_id}/documents/${doc.id}`)}
             >
               {doc.filename}
