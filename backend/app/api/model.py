@@ -22,8 +22,8 @@ def create(model_in: ModelCreate, db: Session = Depends(get_db), current_user: A
     return BaseResponse(data=ModelOut.model_validate(model))
 
 @router.get("", response_model=ListResponse[ModelOut])
-def list(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
-    models = model_service.get_models(db, skip=skip, limit=limit)
+def list(skip: int = 0, limit: int = 100, model_type: str = None, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
+    models = model_service.get_models(db, skip=skip, limit=limit, model_type=model_type)
     return ListResponse(data=[ModelOut.model_validate(m) for m in models])
 
 @router.get("/{model_id}", response_model=BaseResponse[ModelOut])

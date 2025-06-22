@@ -3,8 +3,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.core.config import config
 from app.db.session import SessionLocal
-from app.db.models import Document, DocumentStatus
-from sqlalchemy.orm import Session
+from app.db.models import Document, DocumentStatus, KnowledgeBase, Model, Connection
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 import traceback
 from loguru import logger
@@ -21,8 +21,10 @@ class DocumentProcessor:
     def _get_kb_and_chunks(self):
         db = SessionLocal()
         try:
-            # 找到文档所属的知识库
-            kb = db.query(Document.knowledge_base.property.mapper.class_).filter_by(id=self.doc.kb_id).first()
+            # 找到文档所属的知识库，并预加载 embedding_model 及其 connection
+            kb = db.query(KnowledgeBase).options(
+                joinedload(KnowledgeBase.embedding_model).joinedload(Model.connection)
+            ).filter_by(id=self.doc.kb_id).first()
         finally:
             db.close()
         
@@ -130,16 +132,45 @@ class DocumentProcessor:
                 return
             from app.langchain_utils.vector_store import get_chroma_collection
             from app.core.config import config as global_config
+            
             embedder = None
-            if global_config.embedding['default'] == 'openai':
-                from langchain_openai import OpenAIEmbeddings
-                embedder = OpenAIEmbeddings()
-            elif global_config.embedding['default'] == 'ollama':
-                from langchain_ollama import OllamaEmbeddings
-                embedder = OllamaEmbeddings(
-                    base_url=global_config.embedding['ollama']['url'],
-                    model=global_config.embedding['ollama']['model']
-                )
+            embedding_model = kb.embedding_model
+
+            # 优先使用知识库指定的模型
+            if embedding_model and embedding_model.connection:
+                logger.info(f"DocID={self.doc.id}: 使用知识库 specific 模型: {embedding_model.model_name} from {embedding_model.connection.provider}")
+                provider = embedding_model.connection.provider
+                if provider == 'ollama':
+                    from langchain_ollama import OllamaEmbeddings
+                    embedder = OllamaEmbeddings(
+                        base_url=embedding_model.connection.api_base,
+                        model=embedding_model.model_name
+                    )
+                elif provider == 'openai':
+                    from langchain_openai import OpenAIEmbeddings
+                    embedder = OpenAIEmbeddings(
+                        model=embedding_model.model_name,
+                        api_key=embedding_model.connection.api_key,
+                        base_url=embedding_model.connection.api_base or None
+                    )
+                # 可在此处添加对其他 provider (如 xinference) 的支持
+            
+            # 如果没有指定模型，则使用全局默认配置作为 fallback
+            if not embedder:
+                logger.info(f"DocID={self.doc.id}: 知识库未指定模型，回退到全局默认模型: {global_config.embedding['default']}")
+                if global_config.embedding['default'] == 'openai':
+                    from langchain_openai import OpenAIEmbeddings
+                    embedder = OpenAIEmbeddings()
+                elif global_config.embedding['default'] == 'ollama':
+                    from langchain_ollama import OllamaEmbeddings
+                    embedder = OllamaEmbeddings(
+                        base_url=global_config.embedding['ollama']['url'],
+                        model=global_config.embedding['ollama']['model']
+                    )
+
+            if not embedder:
+                raise ValueError("无法初始化 Embedding 模型，请检查知识库或全局配置。")
+
             db_chroma = get_chroma_collection(collection_name=f"kb_{self.doc.kb_id}", embedding_function=embedder)
 
             start_offset = self.doc.parse_offset or 0

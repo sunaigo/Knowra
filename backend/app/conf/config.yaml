@@ -10,7 +10,7 @@ embedding:
   default: "ollama"  # 可选：ollama/openai，默认embedding引擎
   parallel: 3        # embedding并行度，默认3
   ollama:
-    url: "http://127.0.0.1:11434"  # Ollama服务地址
+    url: "http://127.0.0.1:11432"  # Ollama服务地址
     model: "all-minilm"  # Ollama模型名
   openai:
     api_key: "sk-xxx"  # OpenAI API密钥

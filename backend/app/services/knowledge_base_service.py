@@ -10,7 +10,9 @@ def create_kb(db: Session, kb_in: KnowledgeBaseCreate, owner_id: int):
     kb = models.KnowledgeBase(
         name=kb_in.name,
         description=kb_in.description,
-        owner_id=owner_id
+        owner_id=owner_id,
+        auto_process_on_upload=kb_in.auto_process_on_upload,
+        embedding_model_id=kb_in.embedding_model_id
     )
     db.add(kb)
     db.commit()

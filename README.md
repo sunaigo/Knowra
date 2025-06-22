@@ -37,6 +37,15 @@ This project uses a separated frontend and backend architecture:
 
 ## Update Log
 ### 2025-06-22
+- **Knowledge Base Feature Enhancement**
+  - **Model Binding**: Ability to select and bind an existing Embedding model when creating/editing a knowledge base.
+  - **Dynamic Model Loading**: During document processing, the system now intelligently uses the model bound to the knowledge base for vectorization, instead of a global model. It falls back to the system default if no model is bound.
+- **Frontend Refactoring & Optimization**
+  - **Component Reuse**: Refactored the "New/Edit Knowledge Base" pages into a reusable `KnowledgeBaseForm` component, improving code maintainability.
+  - **Interaction Feedback**: Introduced the `sonner` component to provide instant toast notifications for form submissions, enhancing user experience.
+- **Bug Fixes**
+  - Fixed an issue where the frontend failed to fetch the embedding model list due to requests lacking authentication tokens.
+  - Fixed a runtime `AttributeError` in the backend caused by improper use of `joinedload`.
 - **Enhanced Connection Management Security**
   - **Encrypted Storage**: API keys for connections are now encrypted in the database using Fernet, with the key managed via a `.env` file.
   - **Secure Transmission**: The backend API no longer sends sensitive API keys to the frontend, preventing potential exposure.

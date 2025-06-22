@@ -38,8 +38,11 @@ def create_model(db: Session, model_in: ModelCreate, maintainer_id: int) -> Mode
     db.refresh(db_model)
     return db_model
 
-def get_models(db: Session, skip: int = 0, limit: int = 100) -> List[Model]:
-    return db.query(Model).offset(skip).limit(limit).all()
+def get_models(db: Session, skip: int = 0, limit: int = 100, model_type: str = None) -> List[Model]:
+    query = db.query(Model)
+    if model_type:
+        query = query.filter(Model.model_type == model_type)
+    return query.offset(skip).limit(limit).all()
 
 def get_model(db: Session, model_id: int) -> Optional[Model]:
     return db.query(Model).filter(Model.id == model_id).first()

@@ -75,6 +75,8 @@ class KnowledgeBase(Base):
     overlap = Column(Integer, default=100)      # 默认重叠
     auto_process_on_upload = Column(Boolean, default=True)  # 上传时自动处理
     team_id = Column(Integer, ForeignKey('teams.id'), nullable=True)
+    embedding_model_id = Column(Integer, ForeignKey('models.id'), nullable=True)  # 新增字段
+    embedding_model = relationship('Model')  # 新增关系
 
 # 文档表
 class Document(Base):

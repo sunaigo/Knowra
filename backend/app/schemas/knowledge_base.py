@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from datetime import datetime
 from app.schemas.user import UserOut
+from app.schemas.model import ModelOut
 
 class KnowledgeBaseBase(BaseModel):
     name: str
@@ -9,6 +10,7 @@ class KnowledgeBaseBase(BaseModel):
 
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     auto_process_on_upload: Optional[bool] = True
+    embedding_model_id: Optional[int] = None
 
 class KnowledgeBaseUpdate(BaseModel):
     name: Optional[str] = None
@@ -16,6 +18,7 @@ class KnowledgeBaseUpdate(BaseModel):
     chunk_size: Optional[int] = None
     overlap: Optional[int] = None
     auto_process_on_upload: Optional[bool] = None
+    embedding_model_id: Optional[int] = None
 
 class KnowledgeBaseOut(KnowledgeBaseBase):
     id: int
@@ -27,6 +30,8 @@ class KnowledgeBaseOut(KnowledgeBaseBase):
     overlap: int = 100
     auto_process_on_upload: bool = True
     last_file_time: Optional[datetime] = None
+    embedding_model_id: Optional[int] = None
+    embedding_model: Optional[ModelOut] = None
     class Config:
         from_attributes = True  # pydantic v2写法，替代orm_mode 
 
