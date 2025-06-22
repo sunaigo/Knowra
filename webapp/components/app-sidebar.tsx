@@ -61,8 +61,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       },
       {
         title: t('sidebar.model.title'),
-        url: '/models',
-        icon: SquareTerminal
+        url: '',
+        icon: SquareTerminal,
+        items: [
+          { title: t('sidebar.model.list'), url: '/models' },
+          { title: t('sidebar.model.connections'), url: '/connections' },
+        ],
       },
       {
         title: t('sidebar.user.title'),

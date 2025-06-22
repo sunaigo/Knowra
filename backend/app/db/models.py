@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table, Index, JSON
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.orm import relationship, declarative_base, Mapped
+from sqlalchemy.ext.hybrid import hybrid_property
 from datetime import datetime
 
 Base = declarative_base()
@@ -127,13 +128,36 @@ class RolePermission(Base):
 # 联合索引（如常用复合查询）
 Index('idx_documents_kb_status', Document.kb_id, Document.status)
 
+# 连接（模型提供商）表
+class Connection(Base):
+    __tablename__ = 'connections'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False, comment="连接名称")
+    provider = Column(String(30), nullable=False, comment="模型提供商")
+    api_base = Column(String(255), nullable=False, comment="API 基础地址")
+    api_key = Column(String(255), nullable=True, comment="API 密钥")
+    status = Column(String(20), default='enabled', comment="状态")
+    description = Column(Text, comment="描述")
+    maintainer_id = Column(Integer, ForeignKey('users.id'), comment="维护人ID")
+    maintainer = relationship('User')
+    models = relationship('Model', back_populates='connection')
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @hybrid_property
+    def has_api_key(self):
+        return self.api_key is not None and self.api_key != ''
+
+    @has_api_key.expression
+    def has_api_key(cls):
+        return cls.api_key.isnot(None) & (cls.api_key != '')
+
 class Model(Base):
     __tablename__ = 'models'
     id = Column(Integer, primary_key=True, index=True)
-    model_name = Column(String(100), unique=True, nullable=False)  # 模型名称
-    type = Column(String(30), nullable=False)  # embedding/llm/vllm/other
-    api_base = Column(String(255))  # API 基础地址
-    api_key = Column(String(255))   # API 密钥
+    model_name = Column(String(100), nullable=False)  # 模型名称
+    connection_id = Column(Integer, ForeignKey('connections.id'), nullable=True)
+    connection = relationship('Connection', back_populates='models')
     model_type = Column(String(30), nullable=False)  # 新增：大语言模型/向量模型/视觉模型
     embedding_dim = Column(Integer)  # 向量维度
     is_default = Column(Boolean, default=False)  # 是否为默认

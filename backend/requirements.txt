@@ -137,3 +137,4 @@ zstandard==0.23.0
 passlib[argon2]
 python-jose
 langchain-community
+xinference_client

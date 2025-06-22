@@ -225,4 +225,8 @@ Thumbs.db
 # Misc
 *.bak
 *.swp
-*.tmp 
+*.tmp
+
+# Environment variables
+.env
+*/.env 

@@ -36,6 +36,19 @@ This project uses a separated frontend and backend architecture:
 - **Model Management**: Flexibly configure and switch between different large language models.
 
 ## Update Log
+### 2025-06-22
+- **Enhanced Connection Management Security**
+  - **Encrypted Storage**: API keys for connections are now encrypted in the database using Fernet, with the key managed via a `.env` file.
+  - **Secure Transmission**: The backend API no longer sends sensitive API keys to the frontend, preventing potential exposure.
+- **Improved Connection Form UX**
+  - Enhanced the "Test Connection" button with clear loading, success, and failure states (icons and text).
+  - Specific error messages from the backend are now displayed directly in the UI, aiding in debugging.
+  - Implemented a safety mechanism: users must successfully test a new connection before it can be saved, and cannot save a connection that has failed testing.
+- **Bug Fixes & Refactoring**
+  - Fixed various i18n translation key issues.
+  - Resolved backend startup errors related to environment variable loading.
+  - Refactored the Model and Connection forms into reusable components for better maintainability.
+
 ### 2025-06-21
 - **Document Processing Pause and Resume Functionality**
   - You can now pause ongoing document parsing tasks.

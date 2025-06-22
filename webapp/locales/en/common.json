@@ -8,7 +8,9 @@
   "user": {
     "myAccount": "My Account",
     "myTeams": "My Teams",
-    "logout": "Logout"
+    "logout": "Logout",
+    "title": "User Management",
+    "list": "User List"
   },
   "theme": {
     "light": "Light",
@@ -46,7 +48,8 @@
     "confirmReparseDescription": "This document has been processed with the current settings. Are you sure you want to re-parse it?",
     "pageSize": "Page Size",
     "expandAll": "Expand All",
-    "collapseAll": "Collapse All"
+    "collapseAll": "Collapse All",
+    "itemsPerPage": "Items per page"
   },
   "documentList": {
     "buttonUploadDocument": "Upload Document",
@@ -86,5 +89,33 @@
     "password": "Password",
     "login": "Login",
     "register": "Register"
+  },
+  "model": {
+    "title": "Model Management",
+    "list": "Model List",
+    "connections": "Connection Management"
+  },
+  "knowledgeBase": {
+    "title": "Knowledge Base"
+  },
+  "actions": {
+    "openMenu": "Open menu",
+    "edit": "Edit",
+    "copy": "Copy",
+    "delete": "Delete",
+    "save": "Save"
+  },
+  "connections": {
+    "title": "Connections",
+    "new": "New Connection",
+    "edit": "Edit Connection",
+    "formDescription": "Manage your model provider connections here.",
+    "name": "Name",
+    "provider": "Provider",
+    "apiBase": "API Base",
+    "apiKey": "API Key",
+    "description": "Description",
+    "testSuccess": "Connection test successful!",
+    "testFailed": "Connection test failed"
   }
 } 

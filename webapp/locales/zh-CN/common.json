@@ -127,7 +127,8 @@
     },
     "model": {
       "title": "模型管理",
-      "list": "模型列表"
+      "list": "模型列表",
+      "connections": "连接管理"
     },
     "user": {
       "title": "用户管理",
@@ -148,5 +149,40 @@
     "previous": "上一页",
     "next": "下一页",
     "itemsPerPage": "每页条数"
+  },
+  "actions": {
+    "openMenu": "打开菜单",
+    "edit": "编辑",
+    "copy": "复制",
+    "delete": "删除",
+    "save": "保存",
+    "cancel": "取消",
+    "saving": "保存中..."
+  },
+  "connections": {
+    "title": "连接管理",
+    "new": "新建连接",
+    "edit": "编辑连接",
+    "formDescription": "在这里管理您的模型提供商连接。",
+    "name": "名称",
+    "provider": "提供商",
+    "apiBase": "API Base",
+    "apiKey": "API Key",
+    "apiKeyDescription": "如果不需要，请留空。",
+    "description": "描述",
+    "descriptionPlaceholder": "对此连接的简短描述。",
+    "test": "测试连接",
+    "testing": "测试中...",
+    "testSuccess": "连接测试成功！",
+    "testSuccessShort": "测试成功",
+    "testFailed": "连接测试失败",
+    "testFailedShort": "测试失败",
+    "createSuccess": "连接创建成功！",
+    "updateSuccess": "连接更新成功！",
+    "saveFailed": "保存连接失败",
+    "tooltips": {
+      "testToSave": "请先成功测试连接后方可保存",
+      "fixToSave": "连接测试失败，请修正后保存"
+    }
   }
 } 
