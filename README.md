@@ -36,6 +36,16 @@ This project uses a separated frontend and backend architecture:
 - **Model Management**: Flexibly configure and switch between different large language models.
 
 ## Update Log
+
+### 2024-06-23
+- Unified all backend API responses to a standard format (code/data/message).
+- Refactored team & user management: add/remove/invite members, edit team info, role management, permission checks.
+- Team switching now updates localStorage and auto-redirects to KB list.
+- Only team admin/owner can delete KB or team; deletion checks for dependencies.
+- Removed all ForeignKey constraints from UserTeam, KnowledgeBase, Document, etc.; all SQLAlchemy relationships now use explicit primaryjoin and foreign().
+- Fixed uncontrolled/controlled component warnings in frontend forms.
+- Improved global state management (Zustand), user info display, and UI/UX details.
+
 ### 2025-06-22
 - **Knowledge Base Feature Enhancement**
   - **Model Binding**: Ability to select and bind an existing Embedding model when creating/editing a knowledge base.
