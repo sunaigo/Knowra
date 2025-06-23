@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { Settings, Image } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { BreadcrumbManager } from "@/components/breadcrumb-manager"
@@ -10,6 +11,20 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 interface MainLayoutProps {
   children: React.ReactNode
 }
+
+const navItems = [
+  {
+    title: "系统设置",
+    url: "#",
+    icon: Settings,
+    items: [
+      {
+        title: "图标管理",
+        url: "/settings/icons",
+      },
+    ]
+  },
+]
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter()

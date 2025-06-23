@@ -13,6 +13,8 @@ import {
   Settings2,
   SquareTerminal,
   Users,
+  Settings,
+  Image,
 } from "lucide-react"
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
@@ -79,7 +81,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           { title: t('sidebar.user.list'), url: '/users' },
           { title: t('sidebar.user.teams'), url: '/teams' },
         ],
-      }
+      },
+      {
+        title: t('sidebar.settings', '系统设置'),
+        url: '#',
+        icon: Settings,
+        items: [
+          {
+            title: t('sidebar.iconManager', '图标管理'),
+            url: '/settings/icons',
+            icon: Image
+          },
+        ],
+      },
     ],
     projects: [
       { name: t('sidebar.design_engineering'), url: "#", icon: Frame },

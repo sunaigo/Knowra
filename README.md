@@ -35,7 +35,17 @@ This project uses a separated frontend and backend architecture:
 - **User and Team Management**: Supports multi-user and team collaboration.
 - **Model Management**: Flexibly configure and switch between different large language models.
 
-## Update Log
+## Change Log
+
+### 2025-06-24
+- **SVG Icon Management**
+  - Added universal SVG icon picker and management page, supporting both Lucide and custom SVG icons.
+  - Backend now supports storing SVG as string, and exposes a unified upload API: `POST /api/icons/upload` (accepts JSON).
+  - Frontend upload form and management UI now fully support dark mode and improved preview.
+  - `custom-svg-icon` component now auto-detects and renders both gzip+base64 and plain SVG content.
+  - Removed unused dependencies and improved type safety.
+  - Fixed issues with DB migration, API path, and frontend-backend data compatibility.
+  
 
 ### 2024-06-23
 - Unified all backend API responses to a standard format (code/data/message).
@@ -78,6 +88,11 @@ This project uses a separated frontend and backend architecture:
   - Resolved a Next.js Hydration Mismatch error caused by incorrect usage of internationalization (i18n) keys.
   - Unified the user experience on the document list page and document detail page, both now supporting pause, resume, and re-parsing.
   - Optimized various UI/UX details to improve usability and clarity.
+
+
+
+
+
 
 ## Quick Start
 

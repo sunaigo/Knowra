@@ -265,4 +265,14 @@ class Model(Base):
     maintainer = relationship(
         "User",
         primaryjoin="User.id == foreign(Model.maintainer_id)"
-    ) 
+    )
+
+class SvgIcon(Base):
+    __tablename__ = 'svg_icons'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False, comment='图标名')
+    content = Column(Text, nullable=False, comment='svg内容字符串')
+    uploader_id = Column(Integer, ForeignKey('users.id'), nullable=False, comment='上传者id')
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    uploader = relationship('User', primaryjoin='User.id == foreign(SvgIcon.uploader_id)') 

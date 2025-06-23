@@ -70,8 +70,8 @@ def delete_knowledge_base(kb_id: int, db: Session = Depends(get_db), current_use
     # 校验知识库下是否还有文件
     doc_count = db.query(Document).filter(Document.kb_id == kb_id).count()
     if doc_count > 0:
-        return {"code": 400, "data": None, "message": "请先删除该知识库下所有文件后再删除知识库"}
+        return BaseResponse(code=400, data=None, message="请先删除该知识库下所有文件后再删除知识库")
     kb = delete_kb(db, kb_id)
     if not kb:
-        return {"code": 404, "data": None, "message": "知识库不存在"}
-    return {"code": 200, "data": None, "message": "知识库删除成功"} 
+        return BaseResponse(code=404, data=None, message="知识库不存在")
+    return BaseResponse(code=200, data=None, message="知识库删除成功") 
