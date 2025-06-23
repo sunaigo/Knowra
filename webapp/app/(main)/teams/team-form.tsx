@@ -1,0 +1,115 @@
+"use client"
+
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { Button } from "@/components/ui/button"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { TeamCreate, TeamCreateSchema, TeamUpdate } from "@/schemas/team"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { post, put } from "@/lib/request"
+import { toast } from "sonner"
+
+interface TeamFormProps {
+  mode: "create" | "edit"
+  defaultValues?: Partial<TeamCreate>
+  teamId?: number
+}
+
+export function TeamForm({ mode, defaultValues, teamId }: TeamFormProps) {
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+
+  const form = useForm<TeamCreate>({
+    resolver: zodResolver(TeamCreateSchema),
+    defaultValues: {
+      name: defaultValues?.name || "",
+      description: defaultValues?.description || "",
+    },
+  })
+
+  async function onSubmit(values: TeamCreate) {
+    setIsLoading(true)
+    try {
+      if (mode === "create") {
+        await post("/teams", values)
+        toast.success("团队创建成功")
+        router.push("/teams")
+      } else if (mode === "edit" && teamId) {
+        await put(`/teams/${teamId}`, values)
+        toast.success("团队更新成功")
+        router.push(`/teams/${teamId}`)
+      }
+    } catch (error) {
+      toast.error(mode === "create" ? "创建团队失败" : "更新团队失败")
+      console.error("Team operation failed:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>团队名称</FormLabel>
+              <FormControl>
+                <Input placeholder="输入团队名称" {...field} />
+              </FormControl>
+              <FormDescription>
+                团队名称将在整个系统中显示。
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>团队描述</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="输入团队描述（可选）"
+                  className="resize-none"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                简要描述团队的目标和职责。
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex gap-4">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "保存中..." : mode === "create" ? "创建团队" : "更新团队"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+          >
+            取消
+          </Button>
+        </div>
+      </form>
+    </Form>
+  )
+} 
