@@ -203,10 +203,10 @@ def list_document_chunks(doc_id: int, page: int = Query(1, ge=1), limit: int = Q
 
     chunk_list = []
     for text, meta in paginated_items:
-        chunk_data = {"chunk_id": meta.get("chunk_id"), "text": text, "total_lines": text.count('\\n') + 1, "truncated": False, "length": meta.get("length", len(text))}
+        chunk_data = {"chunk_id": meta.get("chunk_id"), "text": text, "total_lines": text.count('\n') + 1, "truncated": False, "length": meta.get("length", len(text))}
         if not full_text:
             lines = text.splitlines()
-            preview = '\\n'.join(lines[:3])
+            preview = '\n'.join(lines[:3])
             chunk_data["text"] = preview
             chunk_data["truncated"] = len(lines) > 3
         chunk_list.append(chunk_data)

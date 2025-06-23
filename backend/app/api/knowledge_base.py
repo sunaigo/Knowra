@@ -30,7 +30,7 @@ router = APIRouter(prefix="/kb", tags=["knowledge_base"])
 def create_knowledge_base(kb_in: KnowledgeBaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     kb = create_kb(db, kb_in, owner_id=current_user.id)
     kb_out = KnowledgeBaseOut.model_validate(kb).model_dump()
-    return {"code": 200, "data": kb_out, "message": "success"}
+    return BaseResponse(code=200, data=kb_out, message="success")
 
 @router.get("", response_model=BaseResponse)
 def list_knowledge_bases(
@@ -43,27 +43,27 @@ def list_knowledge_bases(
     try:
         kbs = get_kbs(db, team_id=team_id, skip=skip, limit=limit)
         data = [KnowledgeBaseOut.model_validate(kb).model_dump() for kb in kbs]
-        return {"code": 200, "data": data, "message": "success"}
+        return BaseResponse(code=200, data=data, message="success")
     except Exception as e:
-        return {"code": 500, "data": None, "message": str(e)}
+        return BaseResponse(code=500, data=None, message=str(e))
 
 @router.get("/{kb_id}", response_model=BaseResponse)
 def get_knowledge_base(kb_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     kb = get_kb(db, kb_id)
     if not kb:
-        return {"code": 404, "data": None, "message": "知识库不存在"}
+        return BaseResponse(code=404, data=None, message="知识库不存在")
     doc_count = db.query(Document).filter(Document.kb_id == kb_id).count()
     kb_out = KnowledgeBaseOut.model_validate(kb).model_dump()
     kb_out['doc_count'] = doc_count
-    return {"code": 200, "data": kb_out, "message": "success"}
+    return BaseResponse(code=200, data=kb_out, message="success")
 
 @router.put("/{kb_id}", response_model=BaseResponse)
 def update_knowledge_base(kb_id: int, kb_in: KnowledgeBaseUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     kb = update_kb(db, kb_id, kb_in)
     if not kb:
-        return {"code": 404, "data": None, "message": "知识库不存在"}
+        return BaseResponse(code=404, data=None, message="知识库不存在")
     kb_out = KnowledgeBaseOut.model_validate(kb).model_dump()
-    return {"code": 200, "data": kb_out, "message": "success"}
+    return BaseResponse(code=200, data=kb_out, message="success")
 
 @router.delete("/{kb_id}", response_model=BaseResponse)
 def delete_knowledge_base(kb_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):

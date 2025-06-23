@@ -95,12 +95,16 @@ export default function DocumentChunksPage() {
   const documentUrl = doc_id ? `/kb/documents/${doc_id}` : null
   const kbUrl = kb_id ? `/kb/${kb_id}` : null
 
-  const { data: chunksData, isLoading: isLoadingChunks } =
-    useSWR<ChunksResponse>(chunksUrl)
-  const { data: documentData, isLoading: isLoadingDocument } =
-    useSWR<Doc>(documentUrl)
-  const { data: kbData, isLoading: isLoadingKb } =
-    useSWR<KnowledgeBase>(kbUrl)
+  const { data: chunksResponse, isLoading: isLoadingChunks } =
+    useSWR<{ code: number; message: string; data: ChunksResponse }>(chunksUrl, get)
+  const { data: documentResponse, isLoading: isLoadingDocument } =
+    useSWR<{ code: number; message: string; data: Doc }>(documentUrl, get)
+  const { data: kbResponse, isLoading: isLoadingKb } =
+    useSWR<{ code: number; message: string; data: KnowledgeBase }>(kbUrl, get)
+
+  const chunksData = chunksResponse?.data
+  const documentData = documentResponse?.data
+  const kbData = kbResponse?.data
 
   const totalPages = chunksData ? Math.ceil(chunksData.total / chunksData.limit) : 0
 

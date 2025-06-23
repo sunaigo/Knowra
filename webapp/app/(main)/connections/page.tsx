@@ -15,11 +15,12 @@ export default function ConnectionsPage() {
   const { t } = useTranslation()
   const API_URL = "/connections"
   const {
-    data: connections,
+    data: response,
     error,
     isLoading,
     mutate,
-  } = useSWR<Connection[]>(API_URL, fetcher)
+  } = useSWR<{ code: number; message: string; data: Connection[] }>(API_URL, fetcher)
+  const connections = response?.data || []
   const [open, setOpen] = useState(false)
   const [editingConnection, setEditingConnection] = useState<Connection | null>(
     null
@@ -61,7 +62,7 @@ export default function ConnectionsPage() {
           onAfterDelete: mutate,
           t,
         })}
-        data={connections ?? []}
+        data={connections}
       />
       <ConnectionForm
         open={open}

@@ -15,10 +15,12 @@ import ModelForm from "../../model-form"
 
 export default function EditModelForm({ modelId }: { modelId: string }) {
   const {
-    data: model,
+    data: response,
     isLoading,
     error,
-  } = useSWR<Model>(`/models/${modelId}`, fetcher)
+  } = useSWR<{ code: number; message: string; data: Model }>(`/models/${modelId}`, fetcher)
+
+  const model = response?.data
 
   if (isLoading) {
     return (

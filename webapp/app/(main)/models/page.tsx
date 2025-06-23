@@ -30,11 +30,13 @@ import { toast } from "sonner"
 
 export default function ModelsPage() {
   const {
-    data: models,
+    data: response,
     isLoading,
     error,
     mutate,
-  } = useSWR<Model[]>("/models", fetcher)
+  } = useSWR<{ code: number; message: string; data: Model[] }>("/models", fetcher)
+
+  const models = response?.data || []
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deletingModelId, setDeletingModelId] = useState<number | null>(null)
@@ -85,7 +87,7 @@ export default function ModelsPage() {
         ) : (
           <DataTable
             columns={memoizedColumns()}
-            data={models ?? []}
+            data={models}
             isLoading={isLoading}
           />
         )}
