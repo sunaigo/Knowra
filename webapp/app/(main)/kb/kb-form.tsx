@@ -9,15 +9,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { fetcher } from "@/lib/request"
+import { useActiveTeamId, useTeams } from "@/stores/team-store"
+import { useEffect } from "react"
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "名称至少需要2个字符。" }),
   description: z.string(),
+  team_id: z.coerce.number({ required_error: "必须选择一个团队。" }),
   chunk_size: z.coerce.number().min(100, { message: "分块大小至少为100。" }),
   overlap: z.coerce.number().min(0, { message: "重叠部分不能为负数。" }),
   auto_process_on_upload: z.boolean(),
@@ -39,18 +42,32 @@ export function KnowledgeBaseForm({
   isSubmitting = false,
   submitButtonText = "保存",
 }: KnowledgeBaseFormProps) {
-  const router = useRouter();
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const activeTeamId = useActiveTeamId()
+  const userTeams = useTeams()
+  
   const form = useForm<KnowledgeBaseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialData?.name || "",
       description: initialData?.description || "",
+      team_id: initialData?.team_id || (searchParams.get('team_id') ? Number(searchParams.get('team_id')) : (activeTeamId ? Number(activeTeamId) : undefined)),
       chunk_size: initialData?.chunk_size || 5000,
       overlap: initialData?.overlap || 200,
       auto_process_on_upload: initialData?.auto_process_on_upload ?? true,
       embedding_model_id: initialData?.embedding_model_id ?? null,
     },
   })
+
+  useEffect(() => {
+    const teamIdFromUrl = searchParams.get('team_id')
+    if (teamIdFromUrl) {
+      form.setValue('team_id', Number(teamIdFromUrl))
+    } else if (activeTeamId) {
+      form.setValue('team_id', Number(activeTeamId))
+    }
+  }, [activeTeamId, searchParams, form])
 
   // 拉取 embedding 模型列表
   const { data: models, isLoading: modelLoading } = useSWR(
@@ -67,6 +84,37 @@ export function KnowledgeBaseForm({
             <CardDescription>为您的知识库设置一个清晰的名称和描述。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="team_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>所属团队</FormLabel>
+                  <Select
+                    value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
+                    onValueChange={val => field.onChange(val ? Number(val) : null)}
+                    disabled={userTeams.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="请选择一个团队" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {userTeams.length > 0 ? (
+                        userTeams.map((team) => (
+                          <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-muted-foreground">您不属于任何团队</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>该知识库将属于您选择的团队。</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
@@ -104,7 +152,7 @@ export function KnowledgeBaseForm({
                 <FormItem>
                   <FormLabel>Embedding 模型</FormLabel>
                   <Select
-                    value={field.value ? String(field.value) : undefined}
+                    value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                     onValueChange={val => field.onChange(val ? Number(val) : null)}
                     disabled={modelLoading}
                   >

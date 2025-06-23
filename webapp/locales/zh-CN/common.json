@@ -48,6 +48,58 @@
     "expandAll": "展开所有",
     "collapseAll": "折叠所有"
   },
+  "teams": {
+    "title": "团队管理",
+    "myTeams": "我的团队",
+    "createTeam": "创建团队",
+    "editTeam": "编辑团队",
+    "teamName": "团队名称",
+    "teamDescription": "团队描述",
+    "memberCount": "成员数量",
+    "myRole": "我的角色",
+    "members": "成员",
+    "manageMembers": "管理成员",
+    "inviteMember": "邀请成员",
+    "removeMember": "移除成员",
+    "setRole": "设置角色",
+    "teamInfo": "团队信息",
+    "teamDetails": "团队详情",
+    "viewDetails": "查看详情",
+    "deleteTeam": "删除团队",
+    "roles": {
+      "owner": "拥有者",
+      "admin": "管理员",
+      "member": "成员"
+    },
+    "messages": {
+      "createSuccess": "团队创建成功",
+      "updateSuccess": "团队更新成功",
+      "deleteSuccess": "团队删除成功",
+      "inviteSuccess": "成员邀请成功",
+      "removeSuccess": "成员移除成功",
+      "roleUpdateSuccess": "角色更新成功",
+      "createFailed": "创建团队失败",
+      "updateFailed": "更新团队失败",
+      "deleteFailed": "删除团队失败",
+      "fetchFailed": "获取团队信息失败",
+      "noTeams": "暂无团队数据",
+      "noMembers": "暂无成员",
+      "noDescription": "暂无描述"
+    },
+    "placeholders": {
+      "teamName": "输入团队名称",
+      "teamDescription": "输入团队描述（可选）",
+      "searchTeams": "搜索团队名称...",
+      "searchMembers": "搜索成员..."
+    },
+    "descriptions": {
+      "teamManagement": "管理您参与的所有团队。",
+      "createTeam": "创建一个新团队来协作管理知识库和项目。",
+      "teamNameDesc": "团队名称将在整个系统中显示。",
+      "teamDescriptionDesc": "简要描述团队的目标和职责。",
+      "recentMembers": "最近加入的成员"
+    }
+  },
   "documentList": {
     "buttonUploadDocument": "上传文档",
     "buttonEdit": "编辑知识库",

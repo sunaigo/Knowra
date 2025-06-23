@@ -1,163 +1,316 @@
-import { get } from "@/lib/request"
-import { TeamResponse, TeamResponseSchema, TeamMembersResponse, TeamMembersResponseSchema } from "@/schemas/team"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Users, Settings, UserPlus } from "lucide-react"
+"use client"
+
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
+import { get, post, put } from "@/lib/request"
+import { TeamDetail, TeamDetailSchema, TeamMember } from "@/schemas/team"
+import { KnowledgeBase } from "@/schemas/knowledge-base"
+import { useParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Plus, Trash2, Pencil } from "lucide-react"
+import { InviteMemberDialog } from "@/components/invite-member-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
+import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 
-async function getTeam(teamId: string): Promise<TeamResponse> {
-  try {
-    const response = await get(`/teams/${teamId}`)
-    return TeamResponseSchema.parse(response)
-  } catch (error) {
-    console.error("Failed to fetch team:", error)
-    return {
-      code: 500,
-      message: "获取团队信息失败",
-      data: {
-        id: 0,
-        name: "",
-        description: null,
-        created_at: "",
-        member_count: 0,
-      },
+export default function TeamDetailPage() {
+  const params = useParams()
+  const teamId = params.team_id as string
+  const [team, setTeam] = useState<TeamDetail | null>(null)
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isInviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const [removingMember, setRemovingMember] = useState<TeamMember | null>(null)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
+  const [editRole, setEditRole] = useState<string>("")
+  const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false)
+  const [editTeamName, setEditTeamName] = useState("")
+  const [editTeamDesc, setEditTeamDesc] = useState("")
+
+  const fetchTeamData = useCallback(async () => {
+    if (!teamId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const teamPromise = get(`/teams/${teamId}`)
+      const membersPromise = get(`/teams/${teamId}/members`)
+      
+      const [teamResponse, membersResponse] = await Promise.all([
+        teamPromise,
+        membersPromise,
+      ])
+
+      setTeam(TeamDetailSchema.parse(teamResponse.data))
+      setMembers(membersResponse.data)
+
+    } catch (err) {
+      console.error("Failed to fetch team data:", err)
+      setError(err instanceof Error ? err.message : "获取团队信息失败")
+    } finally {
+      setLoading(false)
+    }
+  }, [teamId])
+
+  useEffect(() => {
+    fetchTeamData()
+  }, [fetchTeamData])
+
+  const handleRemoveClick = (member: TeamMember) => {
+    setRemovingMember(member)
+    setRemoveDialogOpen(true)
+  }
+
+  const handleRemoveConfirm = async () => {
+    if (!removingMember) return
+    try {
+      await post(`/teams/${teamId}/remove`, { user_id: removingMember.id })
+      toast.success(`已移除成员：${removingMember.username}`)
+      setRemoveDialogOpen(false)
+      setRemovingMember(null)
+      fetchTeamData()
+    } catch (err) {
+      toast.error("移除失败，请重试")
     }
   }
-}
 
-async function getTeamMembers(teamId: string): Promise<TeamMembersResponse> {
-  try {
-    const response = await get(`/teams/${teamId}/members`)
-    return TeamMembersResponseSchema.parse(response)
-  } catch (error) {
-    console.error("Failed to fetch team members:", error)
-    return {
-      code: 500,
-      message: "获取团队成员失败",
-      data: [],
+  const handleRemoveCancel = () => {
+    setRemoveDialogOpen(false)
+    setRemovingMember(null)
+  }
+
+  const handleEditClick = (member: TeamMember) => {
+    setEditingMember(member)
+    setEditRole(member.role)
+    setEditDialogOpen(true)
+  }
+
+  const handleEditConfirm = async () => {
+    if (!editingMember) return
+    if (editRole === editingMember.role) {
+      setEditDialogOpen(false)
+      setEditingMember(null)
+      return
+    }
+    try {
+      const res = await post(`/teams/${teamId}/set_role`, { user_id: editingMember.id, role: editRole })
+      if (res.code === 200) {
+        toast.success("角色修改成功！")
+        setEditDialogOpen(false)
+        setEditingMember(null)
+        fetchTeamData()
+      } else {
+        toast.error(res.message || "角色修改失败")
+      }
+    } catch {
+      toast.error("角色修改失败")
     }
   }
-}
 
-export default async function TeamDetailPage({
-  params,
-}: {
-  params: Promise<{ team_id: string }>
-}) {
-  const resolvedParams = await params
-  const teamId = resolvedParams.team_id
+  const handleEditCancel = () => {
+    setEditDialogOpen(false)
+    setEditingMember(null)
+  }
+
+  const handleEditTeamClick = () => {
+    if (!team) return
+    setEditTeamName(team.name)
+    setEditTeamDesc(team.description || "")
+    setEditTeamDialogOpen(true)
+  }
+
+  const handleEditTeamConfirm = async () => {
+    if (!team) return
+    if (!editTeamName.trim()) {
+      toast.error("团队名称不能为空")
+      return
+    }
+    try {
+      const res = await put(`/teams/${teamId}`, { name: editTeamName, description: editTeamDesc })
+      if (res.code === 200) {
+        toast.success("团队信息修改成功！")
+        setEditTeamDialogOpen(false)
+        fetchTeamData()
+      } else {
+        toast.error(res.message || "团队信息修改失败")
+      }
+    } catch {
+      toast.error("团队信息修改失败")
+    }
+  }
+
+  const handleEditTeamCancel = () => {
+    setEditTeamDialogOpen(false)
+  }
+
+  if (loading) {
+    return <div className="p-8">加载中...</div>
+  }
+
+  if (error) {
+    return <div className="p-8 text-red-500">错误: {error}</div>
+  }
   
-  const [teamData, membersData] = await Promise.all([
-    getTeam(teamId),
-    getTeamMembers(teamId),
-  ])
-
-  const team = teamData.data
-  const members = membersData.data
-
-  // 获取当前用户在团队中的角色（这里简化处理，实际应该从API获取）
-  const currentUserRole = members.find(m => m.id === 1)?.role || 'member' // 临时处理
-  const canManage = currentUserRole === 'owner' || currentUserRole === 'admin'
+  if (!team) {
+    return <div className="p-8">未找到团队信息。</div>
+  }
 
   return (
     <div className="flex h-full flex-1 flex-col space-y-8 p-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between space-y-2">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">{team.name}</h2>
           <p className="text-muted-foreground">
-            {team.description || "暂无描述"}
+            {team.description || "该团队暂无描述。"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href={`/teams/${teamId}/members`}>
-              <Users className="mr-2 h-4 w-4" />
-              管理成员
-            </Link>
-          </Button>
-          {canManage && (
-            <Button asChild>
-              <Link href={`/teams/${teamId}/edit`}>
-                <Settings className="mr-2 h-4 w-4" />
-                编辑团队
-              </Link>
-            </Button>
-          )}
-        </div>
+        <Button size="sm" variant="outline" onClick={handleEditTeamClick}>
+          <Pencil className="mr-2 h-4 w-4" />编辑
+        </Button>
       </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
+      
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>团队信息</CardTitle>
-            <CardDescription>基本团队信息</CardDescription>
+            <CardTitle>团队概览</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">团队名称</label>
-              <p className="text-sm text-muted-foreground">{team.name}</p>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">成员数量</span>
+              <span>{team.member_count} 人</span>
             </div>
-            <div>
-              <label className="text-sm font-medium">描述</label>
-              <p className="text-sm text-muted-foreground">
-                {team.description || "暂无描述"}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">创建时间</label>
-              <p className="text-sm text-muted-foreground">
-                {new Date(team.created_at).toLocaleDateString("zh-CN")}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">成员数量</label>
-              <p className="text-sm text-muted-foreground">{team.member_count} 人</p>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">创建时间</span>
+              <span>{new Date(team.created_at).toLocaleDateString()}</span>
             </div>
           </CardContent>
         </Card>
-
+          
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>团队成员</CardTitle>
-              <CardDescription>最近加入的成员</CardDescription>
+              <CardDescription>团队内的所有成员列表。</CardDescription>
             </div>
-            {canManage && (
-              <Button size="sm" variant="outline">
-                <UserPlus className="h-4 w-4" />
-              </Button>
-            )}
+            <Button size="sm" onClick={() => setInviteDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              添加成员
+            </Button>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {members.slice(0, 5).map((member) => (
+            <div className="grid gap-4">
+              {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                      {member.username.charAt(0).toUpperCase()}
-                    </div>
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={`https://avatars.githubusercontent.com/u/${member.id}?v=4`} alt={member.username} />
+                      <AvatarFallback>{member.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
                     <div>
-                      <p className="text-sm font-medium">{member.username}</p>
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                      <p className="font-semibold">{member.username}</p>
+                      <p className="text-sm text-muted-foreground">{member.email}</p>
                     </div>
                   </div>
-                  <Badge variant={member.role === 'owner' ? 'default' : member.role === 'admin' ? 'secondary' : 'outline'}>
-                    {member.role === 'owner' ? '拥有者' : member.role === 'admin' ? '管理员' : '成员'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={member.role === 'owner' ? 'default' : 'secondary'}>
+                      {member.role}
+                    </Badge>
+                    {member.role !== 'owner' && (
+                      <>
+                        <Button size="icon" variant="ghost" onClick={() => handleEditClick(member)} title="编辑成员角色">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => handleRemoveClick(member)} title="移除成员">
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
-              {members.length > 5 && (
-                <Button variant="ghost" size="sm" asChild className="w-full">
-                  <Link href={`/teams/${teamId}/members`}>
-                    查看全部 {members.length} 名成员
-                  </Link>
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      <InviteMemberDialog
+        teamId={teamId}
+        isOpen={isInviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        onInviteSuccess={fetchTeamData}
+      />
+
+      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认移除成员</DialogTitle>
+            <DialogDescription>成员被移除后将无法访问本团队。</DialogDescription>
+          </DialogHeader>
+          <div>
+            确定要将成员 <span className="font-bold">{removingMember?.username}</span> 移出团队吗？
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={handleRemoveCancel}>取消</Button>
+            <Button variant="destructive" onClick={handleRemoveConfirm}>确认移除</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑成员角色</DialogTitle>
+            <DialogDescription>可将成员设置为"成员"或"管理员"。</DialogDescription>
+          </DialogHeader>
+          <div className="mb-4">
+            <div>成员：<span className="font-bold">{editingMember?.username}</span></div>
+          </div>
+          <Select value={editRole} onValueChange={setEditRole}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="选择角色" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="member">成员 (Member)</SelectItem>
+              <SelectItem value="admin">管理员 (Admin)</SelectItem>
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="ghost" onClick={handleEditCancel}>取消</Button>
+            <Button onClick={handleEditConfirm} disabled={editRole === editingMember?.role}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editTeamDialogOpen} onOpenChange={setEditTeamDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑团队信息</DialogTitle>
+            <DialogDescription>可修改团队名称和描述。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1 font-medium">团队名称</label>
+              <Input value={editTeamName} onChange={e => setEditTeamName(e.target.value)} maxLength={32} />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">团队描述</label>
+              <Textarea value={editTeamDesc} onChange={e => setEditTeamDesc(e.target.value)} maxLength={200} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={handleEditTeamCancel}>取消</Button>
+            <Button onClick={handleEditTeamConfirm} disabled={!editTeamName.trim()}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

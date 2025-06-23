@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_serializer
 from typing import Optional
 from datetime import datetime
 
@@ -17,6 +17,13 @@ class UserOut(BaseModel):
     id: int
     username: str
     email: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    
+    @field_serializer('created_at')
+    def serialize_created_at(self, dt: datetime, _info):
+        return dt.isoformat() + "Z"
+
     class Config:
         from_attributes = True
 

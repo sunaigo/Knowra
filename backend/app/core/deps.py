@@ -8,7 +8,7 @@ from app.core.config import config
 
 SECRET_KEY = config.jwt['secret_key']
 ALGORITHM = config.jwt['algorithm']
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/login")
 
 def get_db():
     db = SessionLocal()

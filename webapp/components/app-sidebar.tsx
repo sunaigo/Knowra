@@ -15,11 +15,12 @@ import {
   Users,
 } from "lucide-react"
 import { useTranslation } from 'react-i18next'
+import { useEffect } from 'react'
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
+import { TeamSwitcher } from "./team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +28,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useUser, useFetchUser } from '@/stores/user-store'
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { t } = useTranslation('common')
@@ -86,17 +88,34 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ],
   }), [t])
 
+  const user = useUser()
+  const fetchUser = useFetchUser()
+
+  useEffect(() => {
+    if (!user) fetchUser()
+  }, [user, fetchUser])
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <TeamSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {user && (user.name || user.username) ? (
+          <NavUser user={user} />
+        ) : (
+          <div className="flex items-center gap-2 p-2">
+            <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />
+            <div className="flex flex-col gap-1">
+              <div className="h-4 w-20 rounded bg-muted animate-pulse" />
+              <div className="h-3 w-28 rounded bg-muted animate-pulse" />
+            </div>
+          </div>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

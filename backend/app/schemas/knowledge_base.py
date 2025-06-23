@@ -7,6 +7,7 @@ from app.schemas.model import ModelOut
 class KnowledgeBaseBase(BaseModel):
     name: str
     description: Optional[str] = None
+    team_id: int
 
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     auto_process_on_upload: Optional[bool] = True

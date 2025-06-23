@@ -2,8 +2,6 @@ from sqlalchemy.orm import Session
 from app.db import models
 from app.schemas.knowledge_base import KnowledgeBaseCreate, KnowledgeBaseUpdate
 from sqlalchemy import func
-from app.db.models import Team, KnowledgeBase, team_kb, User, user_team, Permission
-from typing import List
 
 # 创建知识库
 def create_kb(db: Session, kb_in: KnowledgeBaseCreate, owner_id: int):
@@ -12,7 +10,8 @@ def create_kb(db: Session, kb_in: KnowledgeBaseCreate, owner_id: int):
         description=kb_in.description,
         owner_id=owner_id,
         auto_process_on_upload=kb_in.auto_process_on_upload,
-        embedding_model_id=kb_in.embedding_model_id
+        embedding_model_id=kb_in.embedding_model_id,
+        team_id=kb_in.team_id
     )
     db.add(kb)
     db.commit()
@@ -20,8 +19,12 @@ def create_kb(db: Session, kb_in: KnowledgeBaseCreate, owner_id: int):
     return kb
 
 # 获取所有知识库
-def get_kbs(db: Session, skip: int = 0, limit: int = 20):
-    kbs = db.query(models.KnowledgeBase).offset(skip).limit(limit).all()
+def get_kbs(db: Session, team_id: int = None, skip: int = 0, limit: int = 20):
+    query = db.query(models.KnowledgeBase)
+    if team_id:
+        query = query.filter(models.KnowledgeBase.team_id == team_id)
+
+    kbs = query.offset(skip).limit(limit).all()
     kb_ids = [kb.id for kb in kbs]
     doc_counts = dict(db.query(models.Document.kb_id, func.count(models.Document.id)).filter(models.Document.kb_id.in_(kb_ids)).group_by(models.Document.kb_id).all())
     last_file_times = dict(
@@ -61,85 +64,4 @@ def delete_kb(db: Session, kb_id: int):
         return None
     db.delete(kb)
     db.commit()
-    return kb
-
-def assign_kb_to_team(db: Session, kb_id: int, team_id: int):
-    """将知识库分配给团队"""
-    kb = db.query(KnowledgeBase).filter(KnowledgeBase.id == kb_id).first()
-    team = db.query(Team).filter(Team.id == team_id).first()
-    if kb and team:
-        team.knowledge_bases.append(kb)
-        db.commit()
-        return True
-    return False
-
-def add_user_to_team(db: Session, user_id: int, team_id: int):
-    """将用户加入团队"""
-    user = db.query(User).filter(User.id == user_id).first()
-    team = db.query(Team).filter(Team.id == team_id).first()
-    if user and team:
-        team.users.append(user)
-        db.commit()
-        return True
-    return False
-
-def get_team_members(db: Session, team_id: int) -> List[User]:
-    """获取团队成员列表"""
-    team = db.query(Team).filter(Team.id == team_id).first()
-    if team:
-        return team.users
-    return []
-
-def create_team(db: Session, name: str):
-    team = Team(name=name)
-    db.add(team)
-    db.commit()
-    db.refresh(team)
-    return team
-
-def get_teams(db: Session):
-    return db.query(Team).all()
-
-def delete_team(db: Session, team_id: int):
-    team = db.query(Team).filter(Team.id == team_id).first()
-    if team:
-        db.delete(team)
-        db.commit()
-        return True
-    return False
-
-def create_role(db: Session, name: str, description: str = ""):
-    role = Role(name=name, description=description)
-    db.add(role)
-    db.commit()
-    db.refresh(role)
-    return role
-
-def get_roles(db: Session):
-    return db.query(Role).all()
-
-def delete_role(db: Session, role_id: int):
-    role = db.query(Role).filter(Role.id == role_id).first()
-    if role:
-        db.delete(role)
-        db.commit()
-        return True
-    return False
-
-def create_permission(db: Session, name: str, description: str = ""):
-    perm = Permission(name=name, description=description)
-    db.add(perm)
-    db.commit()
-    db.refresh(perm)
-    return perm
-
-def get_permissions(db: Session):
-    return db.query(Permission).all()
-
-def delete_permission(db: Session, perm_id: int):
-    perm = db.query(Permission).filter(Permission.id == perm_id).first()
-    if perm:
-        db.delete(perm)
-        db.commit()
-        return True
-    return False 
+    return kb 

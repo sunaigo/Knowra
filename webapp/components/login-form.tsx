@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from "framer-motion"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { useFetchUser } from '@/stores/user-store'
 
 export function LoginForm({
   className,
@@ -37,15 +38,17 @@ export function LoginForm({
   const [regError, setRegError] = useState("")
   const router = useRouter()
   const { t } = useTranslation('common')
+  const fetchUser = useFetchUser()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError("")
     try {
-      const data = await post("/user/login", { username, password }, { form: true })
+      const data = await post("/users/login", { username, password }, { form: true })
       if (data.code === 200 && data.data?.access_token) {
         localStorage.setItem("token", data.data.access_token)
+        await fetchUser()
         router.replace("/")
       } else {
         setError(data.message || t('login_failed'))
@@ -67,7 +70,7 @@ export function LoginForm({
       return
     }
     try {
-      const data = await post("/user/register", { username: regUsername, password: regPassword, email: regEmail })
+      const data = await post("/users/register", { username: regUsername, password: regPassword, email: regEmail })
       if (data.code === 200) {
         setIsRegister(false)
         setUsername(regUsername)

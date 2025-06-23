@@ -1,12 +1,9 @@
 "use client"
 
 import {
-  BadgeCheck,
-  Bell,
+  User as UserIcon,
   ChevronsUpDown,
-  CreditCard,
   LogOut,
-  Sparkles,
 } from "lucide-react"
 
 import {
@@ -44,6 +41,7 @@ export function NavUser({
     name: string
     email: string
     avatar: string
+    username?: string
   }
 }) {
   const { isMobile } = useSidebar()
@@ -52,6 +50,7 @@ export function NavUser({
 
   function handleLogout() {
     localStorage.removeItem("token")
+    localStorage.removeItem("activeTeamId")
     router.replace("/login")
   }
 
@@ -66,11 +65,15 @@ export function NavUser({
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  {user.avatar ? (
+                    <AvatarImage src={user.avatar} alt={user.name || user.username} />
+                  ) : null}
+                  <AvatarFallback className="rounded-lg">
+                    {(user.name || user.username)?.slice(0,1).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate font-medium">{user.name || user.username}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
@@ -85,11 +88,15 @@ export function NavUser({
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                    {user.avatar ? (
+                      <AvatarImage src={user.avatar} alt={user.name || user.username} />
+                    ) : null}
+                    <AvatarFallback className="rounded-lg">
+                      {(user.name || user.username)?.slice(0,1).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
+                    <span className="truncate font-medium">{user.name || user.username}</span>
                     <span className="truncate text-xs">{user.email}</span>
                   </div>
                 </div>
@@ -97,23 +104,8 @@ export function NavUser({
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
                 <DropdownMenuItem>
-                  <Sparkles />
-                  {t('upgrade')}
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <BadgeCheck />
+                  <UserIcon />
                   {t('account')}
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <CreditCard />
-                  {t('billing')}
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Bell />
-                  {t('notifications')}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -121,9 +113,18 @@ export function NavUser({
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>🌐 {t('language')}</DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
-                    <DropdownMenuItem onClick={() => i18n.changeLanguage('zh-CN')}>中文</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => i18n.changeLanguage('en')}>English</DropdownMenuItem>
-                    {/* 可继续添加更多语言 */}
+                    <DropdownMenuItem
+                      onClick={() => i18n.changeLanguage('zh-CN')}
+                      className={i18n.language === 'zh-CN' ? 'font-bold text-primary' : ''}
+                    >
+                      中文 {i18n.language === 'zh-CN' && '✓'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => i18n.changeLanguage('en')}
+                      className={i18n.language === 'en' ? 'font-bold text-primary' : ''}
+                    >
+                      English {i18n.language === 'en' && '✓'}
+                    </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               </DropdownMenuGroup>

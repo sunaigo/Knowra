@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.schemas.user import UserCreate, UserLogin, UserOut, TeamMemberOut
+from app.schemas.user import UserCreate, UserLogin, UserOut
 from app.schemas.token import Token
 from app.services.user_service import create_user, authenticate_user, get_user_by_username, assign_role_to_user, user_has_permission
 from fastapi.security import OAuth2PasswordRequestForm
@@ -9,14 +9,17 @@ from jose import jwt
 from datetime import timedelta, datetime
 from app.schemas.response import BaseResponse
 from app.core.deps import get_db, get_current_user
-from app.db.models import User, Team, user_team
+from app.core.config import config
+from app.db.models import User, UserTeam
+from app.schemas.team import TeamWithRole
 from typing import List
+from math import ceil
 
-SECRET_KEY = "knowra-secret-key"  # 实际项目请用更安全的方式存储
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+SECRET_KEY = config.jwt['secret_key']
+ALGORITHM = config.jwt['algorithm']
+ACCESS_TOKEN_EXPIRE_MINUTES = config.jwt['access_token_expire_minutes']
 
-router = APIRouter(prefix="/user", tags=["user"])
+router = APIRouter(prefix="/users", tags=["user"])
 
 def get_db():
     db = SessionLocal()
@@ -43,6 +46,53 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     access_token = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return {"code": 200, "data": {"access_token": access_token, "token_type": "bearer"}, "message": "success"}
 
+@router.get("", response_model=BaseResponse)
+def get_users(db: Session = Depends(get_db), page: int = Query(1, gt=0), limit: int = Query(10, gt=0)):
+    total = db.query(User).count()
+    users = db.query(User).offset((page - 1) * limit).limit(limit).all()
+    users_out = [UserOut.model_validate(user).model_dump() for user in users]
+    
+    return {
+        "code": 200,
+        "data": {
+            "data": users_out,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "page_count": ceil(total / limit)
+        },
+        "message": "success"
+    }
+
+@router.get("/me", response_model=BaseResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    from app.schemas.user import UserOut
+    user_out = UserOut.model_validate(current_user).model_dump()
+    return {"code": 200, "data": user_out, "message": "success"}
+
+@router.get("/me/teams", response_model=BaseResponse)
+def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    associations = db.query(UserTeam).filter(UserTeam.user_id == current_user.id).all()
+    
+    teams_with_role = []
+    for assoc in associations:
+        team_data = TeamWithRole(
+            id=assoc.team.id,
+            name=assoc.team.name,
+            description=assoc.team.description,
+            created_at=assoc.team.created_at,
+            role=assoc.role
+        )
+        teams_with_role.append(team_data)
+
+    return {"code": 200, "data": teams_with_role, "message": "success"}
+
+@router.get("/search")
+def search_users(keyword: str = Query(..., min_length=1), db: Session = Depends(get_db)):
+    users = db.query(User).filter(User.username.contains(keyword)).limit(20).all()
+    users_out = [UserOut.model_validate(user).model_dump() for user in users]
+    return {"code": 200, "data": users_out, "message": "success"}
+
 @router.post("/assign-role")
 def assign_role(user_id: int, role_name: str, db: Session = Depends(get_db)):
     """为用户分配角色"""
@@ -53,26 +103,4 @@ def assign_role(user_id: int, role_name: str, db: Session = Depends(get_db)):
 def check_permission(user_id: int, permission: str, db: Session = Depends(get_db)):
     """检查用户是否有某权限"""
     has_perm = user_has_permission(db, user_id, permission)
-    return {"code": 200, "data": {"user_id": user_id, "permission": permission, "has_permission": has_perm}, "message": "success"}
-
-@router.get("/me", response_model=UserOut)
-def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
-
-@router.get("/me/teams", response_model=List[TeamMemberOut])
-def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    sql = db.execute(
-        """
-        SELECT t.id, t.name, ut.role
-        FROM teams t
-        JOIN user_team ut ON t.id = ut.team_id
-        WHERE ut.user_id = :uid
-        """, {"uid": current_user.id}
-    )
-    teams = [dict(row) for row in sql]
-    return [TeamMemberOut(id=row["id"], username=row["name"], role=row["role"]) for row in teams]
-
-@router.get("/search")
-def search_users(keyword: str = Query(..., min_length=1), db: Session = Depends(get_db)):
-    users = db.query(User).filter(User.username.contains(keyword)).limit(20).all()
-    return {"code": 200, "data": [{"id": u.id, "username": u.username, "email": u.email} for u in users], "message": "success"} 
+    return {"code": 200, "data": {"user_id": user_id, "permission": permission, "has_permission": has_perm}, "message": "success"} 

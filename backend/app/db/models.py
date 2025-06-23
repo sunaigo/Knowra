@@ -1,24 +1,9 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Table, Index, JSON
-from sqlalchemy.orm import relationship, declarative_base, Mapped
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, Table, Index, JSON, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship, foreign
 from sqlalchemy.ext.hybrid import hybrid_property
 from datetime import datetime
 
 Base = declarative_base()
-
-# 用户-团队多对多关系表
-user_team = Table(
-    'user_team', Base.metadata,
-    Column('user_id', Integer, ForeignKey('users.id')),
-    Column('team_id', Integer, ForeignKey('teams.id')),
-    Column('role', String(20), default='member')
-)
-
-# 团队-知识库多对多关系表
-team_kb = Table(
-    'team_kb', Base.metadata,
-    Column('team_id', Integer, ForeignKey('teams.id')),
-    Column('kb_id', Integer, ForeignKey('knowledge_bases.id'))
-)
 
 # 业务常量
 class DocumentStatus:
@@ -38,6 +23,30 @@ class PermissionConst:
     WRITE = 'write'
     DELETE = 'delete'
 
+# 用户-团队关联表
+# user_team = Table(
+#     'user_team', Base.metadata,
+#     Column('user_id', Integer, ForeignKey('users.id'), primary_key=True),
+#     Column('team_id', Integer, ForeignKey('teams.id'), primary_key=True)
+# )
+
+class UserTeam(Base):
+    __tablename__ = 'user_team'
+    user_id = Column(Integer, primary_key=True)
+    team_id = Column(Integer, primary_key=True)
+    role = Column(String(50), default='member', nullable=False)
+
+    user = relationship(
+        "User",
+        primaryjoin="User.id == foreign(UserTeam.user_id)",
+        back_populates="team_associations"
+    )
+    team = relationship(
+        "Team",
+        primaryjoin="Team.id == foreign(UserTeam.team_id)",
+        back_populates="user_associations"
+    )
+
 # 用户表
 class User(Base):
     __tablename__ = 'users'
@@ -47,8 +56,12 @@ class User(Base):
     email = Column(String(120), unique=True, index=True)
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
-    teams = relationship('Team', secondary=user_team, back_populates='users')
     created_at = Column(DateTime, default=datetime.utcnow)
+    team_associations = relationship(
+        'UserTeam',
+        primaryjoin="User.id == foreign(UserTeam.user_id)",
+        back_populates='user'
+    )
 
 # 团队表
 class Team(Base):
@@ -56,9 +69,17 @@ class Team(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
-    users = relationship('User', secondary=user_team, back_populates='teams')
-    knowledge_bases = relationship('KnowledgeBase', secondary=team_kb, back_populates='teams')
     created_at = Column(DateTime, default=datetime.utcnow)
+    user_associations = relationship(
+        'UserTeam',
+        primaryjoin="Team.id == foreign(UserTeam.team_id)",
+        back_populates='team'
+    )
+    knowledge_bases = relationship(
+        'KnowledgeBase',
+        primaryjoin="Team.id == foreign(KnowledgeBase.team_id)",
+        back_populates='team'
+    )
 
 # 知识库表
 class KnowledgeBase(Base):
@@ -66,38 +87,55 @@ class KnowledgeBase(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
-    owner_id = Column(Integer, ForeignKey('users.id'))
-    owner = relationship('User')
-    teams = relationship('Team', secondary=team_kb, back_populates='knowledge_bases')
-    documents = relationship('Document', back_populates='knowledge_base')
+    owner_id = Column(Integer, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    chunk_size = Column(Integer, default=1000)  # 默认切割块大小
-    overlap = Column(Integer, default=100)      # 默认重叠
-    auto_process_on_upload = Column(Boolean, default=True)  # 上传时自动处理
-    team_id = Column(Integer, ForeignKey('teams.id'), nullable=True)
-    embedding_model_id = Column(Integer, ForeignKey('models.id'), nullable=True)  # 新增字段
-    embedding_model = relationship('Model')  # 新增关系
+    chunk_size = Column(Integer, default=1000)
+    overlap = Column(Integer, default=100)
+    auto_process_on_upload = Column(Boolean, default=True)
+    team_id = Column(Integer, nullable=False)
+    embedding_model_id = Column(Integer)
+
+    owner = relationship(
+        "User",
+        primaryjoin="User.id == foreign(KnowledgeBase.owner_id)"
+    )
+    team = relationship(
+        "Team",
+        primaryjoin="Team.id == foreign(KnowledgeBase.team_id)",
+        back_populates="knowledge_bases"
+    )
+    embedding_model = relationship(
+        "Model",
+        primaryjoin="Model.id == foreign(KnowledgeBase.embedding_model_id)"
+    )
 
 # 文档表
 class Document(Base):
     __tablename__ = 'documents'
     id = Column(Integer, primary_key=True, index=True)
-    kb_id = Column(Integer, ForeignKey('knowledge_bases.id'), index=True)
+    kb_id = Column(Integer, index=True)
     filename = Column(String(255), nullable=False)
     filetype = Column(String(20))
     filepath = Column(String(255))
-    uploader_id = Column(Integer, ForeignKey('users.id'), index=True)
-    uploader = relationship('User')
-    knowledge_base = relationship('KnowledgeBase', back_populates='documents')
+    uploader_id = Column(Integer, index=True)
     upload_time = Column(DateTime, default=datetime.utcnow, index=True)
-    status = Column(String(20), default='not_started', index=True)  # not_started, pending, processing, processed, failed
-    meta = Column(Text)  # 预留元数据字段
-    fail_reason = Column(Text, default="")  # 失败原因
-    progress = Column(Integer, default=0)  # 0~100，处理进度百分比
-    parsing_config = Column(JSON, nullable=True)  # 文档独立的解析参数，JSON格式
-    last_parsed_config = Column(JSON, nullable=True)  # 上次成功解析时使用的参数，JSON格式
-    parse_offset = Column(Integer, default=0)   # 断点续解析的最小未完成chunk_id
-    chunk_count = Column(Integer, default=0)      # 文档分块总数
+    status = Column(String(20), default='not_started', index=True)
+    meta = Column(Text)
+    fail_reason = Column(Text, default="")
+    progress = Column(Integer, default=0)
+    parsing_config = Column(JSON, nullable=True)
+    last_parsed_config = Column(JSON, nullable=True)
+    parse_offset = Column(Integer, default=0)
+    chunk_count = Column(Integer, default=0)
+
+    knowledge_base = relationship(
+        "KnowledgeBase",
+        primaryjoin="KnowledgeBase.id == foreign(Document.kb_id)"
+    )
+    uploader = relationship(
+        "User",
+        primaryjoin="User.id == foreign(Document.uploader_id)"
+    )
 
 # 角色表
 class Role(Base):
@@ -105,13 +143,36 @@ class Role(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
     description = Column(Text)
+    # 添加 user_roles 关系
+    user_roles = relationship(
+        "UserRole",
+        primaryjoin="Role.id == foreign(UserRole.role_id)",
+        back_populates="role"
+    )
+    # 添加 role_permissions 关系
+    role_permissions = relationship(
+        "RolePermission",
+        primaryjoin="Role.id == foreign(RolePermission.role_id)",
+        back_populates="role"
+    )
 
 # 用户-角色关联表
 class UserRole(Base):
     __tablename__ = 'user_roles'
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    role_id = Column(Integer, ForeignKey('roles.id'))
+    user_id = Column(Integer)
+    role_id = Column(Integer)
+    
+    # 添加关系定义
+    user = relationship(
+        "User",
+        primaryjoin="User.id == foreign(UserRole.user_id)"
+    )
+    role = relationship(
+        "Role",
+        primaryjoin="Role.id == foreign(UserRole.role_id)",
+        back_populates="user_roles"
+    )
 
 # 权限表
 class Permission(Base):
@@ -119,13 +180,31 @@ class Permission(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, nullable=False)
     description = Column(Text)
+    # 添加 role_permissions 关系
+    role_permissions = relationship(
+        "RolePermission",
+        primaryjoin="Permission.id == foreign(RolePermission.permission_id)",
+        back_populates="permission"
+    )
 
 # 角色-权限关联表
 class RolePermission(Base):
     __tablename__ = 'role_permissions'
     id = Column(Integer, primary_key=True, index=True)
-    role_id = Column(Integer, ForeignKey('roles.id'))
-    permission_id = Column(Integer, ForeignKey('permissions.id'))
+    role_id = Column(Integer)
+    permission_id = Column(Integer)
+    
+    # 添加关系定义
+    role = relationship(
+        "Role",
+        primaryjoin="Role.id == foreign(RolePermission.role_id)",
+        back_populates="role_permissions"
+    )
+    permission = relationship(
+        "Permission",
+        primaryjoin="Permission.id == foreign(RolePermission.permission_id)",
+        back_populates="role_permissions"
+    )
 
 # 联合索引（如常用复合查询）
 Index('idx_documents_kb_status', Document.kb_id, Document.status)
@@ -140,11 +219,20 @@ class Connection(Base):
     api_key = Column(String(255), nullable=True, comment="API 密钥")
     status = Column(String(20), default='enabled', comment="状态")
     description = Column(Text, comment="描述")
-    maintainer_id = Column(Integer, ForeignKey('users.id'), comment="维护人ID")
-    maintainer = relationship('User')
-    models = relationship('Model', back_populates='connection')
+    maintainer_id = Column(Integer, comment="维护人ID")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    maintainer = relationship(
+        "User",
+        primaryjoin="User.id == foreign(Connection.maintainer_id)"
+    )
+    # 添加 models 关系
+    models = relationship(
+        "Model",
+        primaryjoin="Connection.id == foreign(Model.connection_id)",
+        back_populates="connection"
+    )
 
     @hybrid_property
     def has_api_key(self):
@@ -158,15 +246,23 @@ class Model(Base):
     __tablename__ = 'models'
     id = Column(Integer, primary_key=True, index=True)
     model_name = Column(String(100), nullable=False)  # 模型名称
-    connection_id = Column(Integer, ForeignKey('connections.id'), nullable=True)
-    connection = relationship('Connection', back_populates='models')
-    model_type = Column(String(30), nullable=False)  # 新增：大语言模型/向量模型/视觉模型
-    embedding_dim = Column(Integer)  # 向量维度
-    is_default = Column(Boolean, default=False)  # 是否为默认
-    extra_config = Column(Text)  # JSON 字符串，扩展参数
-    status = Column(String(20), default='enabled')  # enabled/disabled
+    connection_id = Column(Integer, nullable=True)
+    model_type = Column(String(30), nullable=False)
+    embedding_dim = Column(Integer)
+    is_default = Column(Boolean, default=False)
+    extra_config = Column(Text)
+    status = Column(String(20), default='enabled')
     description = Column(Text)
-    maintainer_id = Column(Integer, ForeignKey('users.id'))  # 维护人
-    maintainer = relationship('User')
+    maintainer_id = Column(Integer)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    connection = relationship(
+        "Connection",
+        primaryjoin="Connection.id == foreign(Model.connection_id)",
+        back_populates="models"
+    )
+    maintainer = relationship(
+        "User",
+        primaryjoin="User.id == foreign(Model.maintainer_id)"
+    ) 

@@ -81,9 +81,7 @@ export async function request(
   // Default to json
   const data = await res.json().catch(() => ({}))
   // For our backend's standard response format, check code and message
-  if (data.code && data.code !== 200) {
-    throw new Error(data.message || "请求失败")
-  }
+  // 统一返回响应对象，不抛异常，由前端判断 code
   return data
 }
 
@@ -96,7 +94,7 @@ export function get(url: string, options?: RequestInit & { responseType?: 'json'
 export const post = async <T = any>(
   url: string,
   data?: any,
-  options?: RequestInit,
+  options?: RequestInit & { form?: boolean; responseType?: 'json' | 'blob' },
 ): Promise<T> => {
   return request(url, {
     method: 'POST',
@@ -108,7 +106,7 @@ export const post = async <T = any>(
 export const put = async <T = any>(
   url: string,
   data?: any,
-  options?: RequestInit,
+  options?: RequestInit & { form?: boolean; responseType?: 'json' | 'blob' },
 ): Promise<T> => {
   return request(url, {
     method: 'PUT',

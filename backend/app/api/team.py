@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from app.core.deps import get_db, get_current_user
-from app.db.models import Team, User, user_team
-from app.schemas.user import TeamMemberOut
+from app.db.models import Team, User, UserTeam, KnowledgeBase
+from app.schemas.user import TeamMemberOut, UserOut
 from app.schemas.response import BaseResponse, ListResponse
 from app.schemas.team import TeamCreate, TeamUpdate, TeamOut, TeamWithRole, TeamDetail
+from app.services import team_service, user_service
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -30,17 +30,14 @@ def create_team(
 ):
     if not team_in.name.strip():
         raise HTTPException(400, "团队名称不能为空")
-    if db.query(Team).filter(Team.name == team_in.name).first():
+    
+    existing_team = db.query(Team).filter(Team.name == team_in.name).first()
+    if existing_team:
         raise HTTPException(400, "团队名已存在")
     
-    team = Team(name=team_in.name, description=team_in.description)
-    db.add(team)
-    db.commit()
-    db.refresh(team)
+    team = team_service.create_team(db, name=team_in.name, description=team_in.description)
     
-    # 将创建者设为owner
-    db.execute(user_team.insert().values(user_id=current_user.id, team_id=team.id, role='owner'))
-    db.commit()
+    team_service.add_user_to_team(db, user_id=current_user.id, team_id=team.id, role='owner')
     
     return BaseResponse(data=TeamOut.model_validate(team))
 
@@ -49,7 +46,6 @@ def list_teams(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     """获取所有团队列表（管理员功能）"""
     teams = db.query(Team).offset(skip).limit(limit).all()
@@ -58,30 +54,29 @@ def list_teams(
 
 @router.get("/my", response_model=ListResponse[TeamWithRole])
 def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    sql = db.execute(
-        text("""
-        SELECT DISTINCT t.id, t.name, t.description, t.created_at, ut.role,
-            (SELECT COUNT(*) FROM user_team ut2 WHERE ut2.team_id = t.id) as member_count
-        FROM teams t
-        JOIN user_team ut ON t.id = ut.team_id
-        WHERE ut.user_id = :uid
-        """), {"uid": current_user.id}
-    )
-    teams = [dict(row._mapping) for row in sql]
-    teams_data = [TeamWithRole(**team) for team in teams]
+    associations = db.query(UserTeam).filter(UserTeam.user_id == current_user.id).all()
+    
+    teams_data = []
+    for assoc in associations:
+        team_with_role = TeamWithRole(
+            id=assoc.team.id,
+            name=assoc.team.name,
+            description=assoc.team.description,
+            created_at=assoc.team.created_at,
+            role=assoc.role,
+            member_count=len(assoc.team.user_associations)
+        )
+        teams_data.append(team_with_role)
+    
     return ListResponse(data=teams_data)
 
 @router.get("/{team_id}", response_model=BaseResponse[TeamDetail])
-def get_team(team_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_team(team_id: int, db: Session = Depends(get_db)):
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(404, "团队不存在")
     
-    # 获取成员数量
-    member_count = db.execute(
-        text("SELECT COUNT(*) as count FROM user_team WHERE team_id = :tid"),
-        {"tid": team_id}
-    ).scalar()
+    member_count = len(team.user_associations)
     
     team_dict = TeamOut.model_validate(team).model_dump()
     team_dict['member_count'] = member_count
@@ -95,22 +90,18 @@ def update_team(
     db: Session = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    # 检查权限：只有owner/admin可以编辑
-    role_row = db.execute(
-        user_team.select().where(
-            (user_team.c.team_id == team_id) & 
-            (user_team.c.user_id == current_user.id)
-        )
+    assoc = db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == current_user.id
     ).first()
     
-    if not role_row or role_row.role not in ('owner', 'admin'):
+    if not assoc or assoc.role not in ('owner', 'admin'):
         raise HTTPException(403, "无权限")
     
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(404, "团队不存在")
     
-    # 检查团队名是否重复（排除自己）
     if team_in.name != team.name:
         existing_team = db.query(Team).filter(
             Team.name == team_in.name, 
@@ -128,82 +119,101 @@ def update_team(
 
 @router.post("/{team_id}/invite", response_model=BaseResponse)
 def invite_member(team_id: int, body: InviteMemberBody, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 只有owner/admin可邀请
-    role_row = db.execute(user_team.select().where((user_team.c.team_id == team_id) & (user_team.c.user_id == current_user.id))).first()
-    if not role_row or role_row.role not in ('owner', 'admin'):
+    assoc = db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == current_user.id
+    ).first()
+    if not assoc or assoc.role not in ('owner', 'admin'):
         raise HTTPException(403, "无权限")
     
-    user = db.query(User).filter(User.username == body.username).first()
-    if not user:
+    user_to_add = user_service.get_user_by_username(db, username=body.username)
+    if not user_to_add:
         raise HTTPException(404, "用户不存在")
     
-    if db.execute(user_team.select().where((user_team.c.team_id == team_id) & (user_team.c.user_id == user.id))).first():
-        raise HTTPException(400, "用户已在团队中")
+    existing_assoc = db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == user_to_add.id
+    ).first()
+    if existing_assoc:
+        return BaseResponse(code=400, message="用户已在团队中")
     
-    db.execute(user_team.insert().values(user_id=user.id, team_id=team_id, role=body.role))
-    db.commit()
+    team_service.add_user_to_team(db, user_id=user_to_add.id, team_id=team_id, role=body.role)
     
     return BaseResponse(message="邀请成功")
 
 @router.post("/{team_id}/remove", response_model=BaseResponse)
 def remove_member(team_id: int, body: RemoveMemberBody, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 只有owner/admin可移除，且owner不能移除自己
-    role_row = db.execute(user_team.select().where((user_team.c.team_id == team_id) & (user_team.c.user_id == current_user.id))).first()
-    if not role_row or role_row.role not in ('owner', 'admin'):
+    assoc = db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == current_user.id
+    ).first()
+    if not assoc or assoc.role not in ('owner', 'admin'):
         raise HTTPException(403, "无权限")
     
-    # 禁止owner移除自己
-    if body.user_id == current_user.id and role_row.role == 'owner':
+    if body.user_id == current_user.id and assoc.role == 'owner':
         raise HTTPException(400, "拥有者不能移除自己")
     
-    db.execute(user_team.delete().where((user_team.c.team_id == team_id) & (user_team.c.user_id == body.user_id)))
+    db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == body.user_id
+    ).delete()
     db.commit()
     
     return BaseResponse(message="移除成功")
 
 @router.post("/{team_id}/set_role", response_model=BaseResponse)
 def set_member_role(team_id: int, body: SetRoleBody, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 只有owner可设置角色
-    role_row = db.execute(user_team.select().where((user_team.c.team_id == team_id) & (user_team.c.user_id == current_user.id))).first()
-    if not role_row or role_row.role != 'owner':
+    assoc = db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == current_user.id
+    ).first()
+    if not assoc or assoc.role != 'owner':
         raise HTTPException(403, "无权限")
     
-    db.execute(
-        user_team.update().where(
-            (user_team.c.team_id == team_id) & 
-            (user_team.c.user_id == body.user_id)
-        ).values(role=body.role)
-    )
+    db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == body.user_id
+    ).update({'role': body.role})
     db.commit()
     
     return BaseResponse(message="角色设置成功")
 
 @router.get("/{team_id}/members", response_model=ListResponse[TeamMemberOut])
-def get_team_members(team_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    sql = db.execute(
-        text("""
-        SELECT u.id, u.username, u.email, ut.role
-        FROM users u
-        JOIN user_team ut ON u.id = ut.user_id
-        WHERE ut.team_id = :tid
-        """), {"tid": team_id}
-    )
-    members = [dict(row._mapping) for row in sql]
-    members_data = [TeamMemberOut(**m) for m in members]
+def get_team_members(team_id: int, db: Session = Depends(get_db)):
+    associations = team_service.get_team_members(db, team_id=team_id)
+    members_data = []
+    for user in associations:
+        assoc = db.query(UserTeam).filter(
+            UserTeam.team_id == team_id,
+            UserTeam.user_id == user.id
+        ).first()
+        member_data = TeamMemberOut(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            role=assoc.role if assoc else 'unknown'
+        )
+        members_data.append(member_data)
     return ListResponse(data=members_data)
 
 @router.delete("/{team_id}", response_model=BaseResponse)
 def delete_team(team_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # 只有owner且团队只有1人时可删除
-    role_row = db.execute(user_team.select().where((user_team.c.team_id == team_id) & (user_team.c.user_id == current_user.id))).first()
-    if not role_row or role_row.role != 'owner':
+    assoc = db.query(UserTeam).filter(
+        UserTeam.team_id == team_id,
+        UserTeam.user_id == current_user.id
+    ).first()
+    if not assoc or assoc.role != 'owner':
         raise HTTPException(403, "无权限")
     
-    member_count = db.execute(user_team.select().where(user_team.c.team_id == team_id)).fetchall()
-    if len(member_count) > 1:
+    # 新增：校验团队下是否还有知识库
+    kb_count = db.query(KnowledgeBase).filter(KnowledgeBase.team_id == team_id).count()
+    if kb_count > 0:
+        return BaseResponse(code=400, message="请先删除该团队下所有知识库后再删除团队")
+
+    member_count = db.query(UserTeam).filter(UserTeam.team_id == team_id).count()
+    if member_count > 1:
         raise HTTPException(400, "团队成员不止拥有者，无法删除")
     
-    db.query(Team).filter(Team.id == team_id).delete()
-    db.commit()
+    team_service.delete_team(db, team_id=team_id)
     
     return BaseResponse(message="删除成功") 
