@@ -45,3 +45,5 @@ file_process:
 # 默认切割参数
 chunk_size: 10000  # 默认切割块大小
 overlap: 200      # 默认重叠 
+
+# 敏感密钥如AES_KEY请通过.env环境变量管理，不要写在本配置文件中。 

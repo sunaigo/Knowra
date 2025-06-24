@@ -12,8 +12,8 @@ class Config:
     def __init__(self, config_path=CONF_PATH):
         with open(config_path, 'r') as f:
             self._cfg = yaml.safe_load(f)
-        
-        self.FERNET_KEY = os.getenv("FERNET_KEY")
+        # AES-256密钥，必须32字节
+        self.AES_KEY = "3jLwlI9yUmCapcakbArVSLEtuNiomSaf"
 
     @property
     def sqlalchemy_url(self):

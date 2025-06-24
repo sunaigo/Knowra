@@ -12,20 +12,6 @@ interface MainLayoutProps {
   children: React.ReactNode
 }
 
-const navItems = [
-  {
-    title: "系统设置",
-    url: "#",
-    icon: Settings,
-    items: [
-      {
-        title: "图标管理",
-        url: "/settings/icons",
-      },
-    ]
-  },
-]
-
 export default function MainLayout({ children }: MainLayoutProps) {
   const router = useRouter()
   useEffect(() => {

@@ -38,16 +38,13 @@ This project uses a separated frontend and backend architecture:
 ## Change Log
 
 ### 2025-06-24
-- **SVG Icon Management**
-  - Added universal SVG icon picker and management page, supporting both Lucide and custom SVG icons.
-  - Backend now supports storing SVG as string, and exposes a unified upload API: `POST /api/icons/upload` (accepts JSON).
-  - Frontend upload form and management UI now fully support dark mode and improved preview.
-  - `custom-svg-icon` component now auto-detects and renders both gzip+base64 and plain SVG content.
-  - Removed unused dependencies and improved type safety.
-  - Fixed issues with DB migration, API path, and frontend-backend data compatibility.
+- Added vector database management module
+  - Supports Chroma, PGVector (PostgreSQL), Milvus
+  - Team isolation, permission control, dynamic form, connection test, encryption, database persistence, shadcn/ui dialog for safe deletion, etc.
   
 
 ### 2024-06-23
+- Added universal SVG icon picker and management page
 - Unified all backend API responses to a standard format (code/data/message).
 - Refactored team & user management: add/remove/invite members, edit team info, role management, permission checks.
 - Team switching now updates localStorage and auto-redirects to KB list.
@@ -89,9 +86,20 @@ This project uses a separated frontend and backend architecture:
   - Unified the user experience on the document list page and document detail page, both now supporting pause, resume, and re-parsing.
   - Optimized various UI/UX details to improve usability and clarity.
 
+## Environment Variables
 
+> **Security Note: Be sure to set the AES_KEY environment variable for AES-256 encryption, and the key must be exactly 32 bytes.**
 
+Add to your `backend/.env` file:
 
+```env
+AES_KEY=Please replace with a 32-byte secure random string
+```
+
+Recommended generation command (Linux/macOS):
+```bash
+head -c 32 /dev/urandom | base64 | cut -c1-32
+```
 
 
 ## Quick Start

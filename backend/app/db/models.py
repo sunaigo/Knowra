@@ -275,4 +275,19 @@ class SvgIcon(Base):
     uploader_id = Column(Integer, ForeignKey('users.id'), nullable=False, comment='上传者id')
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    uploader = relationship('User', primaryjoin='User.id == foreign(SvgIcon.uploader_id)') 
+    uploader = relationship('User', primaryjoin='User.id == foreign(SvgIcon.uploader_id)')
+
+class VectorDBConfig(Base):
+    __tablename__ = 'vector_db_configs'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False)
+    type = Column(String(30), nullable=False)  # chroma/pgvector/milvus
+    team_id = Column(Integer, nullable=False)
+    description = Column(Text)
+    connection_config = Column(JSON, nullable=False)  # 存储所有连接参数
+    is_private = Column(Boolean, default=True)
+    allowed_team_ids = Column(JSON, nullable=True)
+    embedding_dimension = Column(Integer, default=1536)
+    index_type = Column(String(30), default="hnsw")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 

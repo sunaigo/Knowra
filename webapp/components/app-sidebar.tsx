@@ -15,6 +15,7 @@ import {
   Users,
   Settings,
   Image,
+  Database,
 } from "lucide-react"
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
@@ -81,6 +82,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           { title: t('sidebar.user.list'), url: '/users' },
           { title: t('sidebar.user.teams'), url: '/teams' },
         ],
+      },
+      {
+        title: '向量数据库',
+        url: '/vdb',
+        icon: Database
       },
       {
         title: t('sidebar.settings', '系统设置'),
