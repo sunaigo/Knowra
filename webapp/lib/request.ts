@@ -1,3 +1,6 @@
+import { useRouter } from 'next/navigation'
+import { useRef } from 'react'
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"
 
 function getToken() {
@@ -23,9 +26,25 @@ function isPlainObject(obj: any) {
   return Object.prototype.toString.call(obj) === '[object Object]'
 }
 
+// 新增：全局401处理hook
+export function useAuthRedirect() {
+  const router = useRouter();
+  const hasRedirected = useRef(false);
+  // 只在401时跳转一次，防止多次重定向
+  return () => {
+    if (!hasRedirected.current) {
+      hasRedirected.current = true;
+      localStorage.removeItem('token');
+      localStorage.removeItem('activeTeamId');
+      router.replace('/login');
+    }
+  };
+}
+
+// 修改request函数，支持传入401处理回调
 export async function request(
   url: string,
-  options: RequestInit & { form?: boolean; responseType?: 'json' | 'blob' } = {}
+  options: RequestInit & { form?: boolean; responseType?: 'json' | 'blob', on401?: () => void } = {}
 ) {
   const { responseType = 'json', ...restOptions } = options;
   const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`
@@ -67,6 +86,13 @@ export async function request(
       }
     } catch (e) {
       // Not a JSON response, do nothing
+    }
+    // 401时调用自定义回调
+    if (res.status === 401 && typeof window !== 'undefined') {
+      if (typeof options.on401 === 'function') {
+        options.on401();
+      }
+      return;
     }
     const err = new Error(errorDetail)
     // @ts-ignore

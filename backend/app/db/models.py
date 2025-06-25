@@ -291,4 +291,14 @@ class VectorDBConfig(Base):
     embedding_dimension = Column(Integer, default=1536)
     index_type = Column(String(30), default="hnsw")
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Collection(Base):
+    __tablename__ = "collection"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text)
+    vdb_id = Column(Integer, nullable=False)  # 逻辑关联，无外键
+    owner_id = Column(Integer, nullable=False)  # 逻辑关联，无外键
+    created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 

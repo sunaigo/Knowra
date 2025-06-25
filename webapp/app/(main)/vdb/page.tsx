@@ -79,7 +79,11 @@ export default function VDBPage() {
               ) : (
                 data?.data?.map((vdb: VDB) => (
                   <tr key={vdb.id} className="border-b">
-                    <td className="px-4 py-2">{vdb.name}</td>
+                    <td className="px-4 py-2">
+                      <Link href={`/vdb/${vdb.id}/collections`} className="hover:underline">
+                        {vdb.name}
+                      </Link>
+                    </td>
                     <td className="px-4 py-2">{vdb.type}</td>
                     <td className="px-4 py-2">{vdb.team_id}</td>
                     <td className="px-4 py-2">{vdb.description || '-'}</td>

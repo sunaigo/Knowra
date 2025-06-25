@@ -4,7 +4,7 @@ from typing import List, Optional
 from app.db.session import SessionLocal
 from app.schemas.response import BaseResponse
 from app.db.vdb.types import VectorDBConfig as VDBPydanticConfig, VectorDBType
-from app.db.models import Team, VectorDBConfig  # 新增VectorDBConfig模型
+from app.db.models import Team, VectorDBConfig, Collection, User  # 新增 User
 from app.core.deps import get_db, get_current_user
 from pydantic import BaseModel
 from datetime import datetime
@@ -24,7 +24,7 @@ class VectorDBConfigIn(BaseModel):
     index_type: str = "hnsw"
 
 @router.post("", response_model=BaseResponse)
-def create_vdb(config_in: VectorDBConfigIn, db: Session = Depends(get_db), current_user: Team = Depends(get_current_user)):
+def create_vdb(config_in: VectorDBConfigIn, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     # 权限校验略
     exists = db.query(VectorDBConfig).filter_by(name=config_in.name).first()
     if exists:
@@ -45,6 +45,17 @@ def create_vdb(config_in: VectorDBConfigIn, db: Session = Depends(get_db), curre
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
+
+    # 自动创建默认 collection
+    default_collection = Collection(
+        name="default",
+        description="默认 collection",
+        vdb_id=db_obj.id,
+        owner_id=current_user.id
+    )
+    db.add(default_collection)
+    db.commit()
+    db.refresh(default_collection)
     # 只返回可序列化字段
     data = {
         "id": db_obj.id,

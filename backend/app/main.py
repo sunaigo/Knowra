@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import user, knowledge_base, document, team, model, connection, icon_router, vdb
+from app.api import user, knowledge_base, document, team, model, connection, icon_router, vdb, collection
 from app.core.log import logger
 from app.core.config import config
 from app.core.file_queue import file_queue
@@ -33,3 +33,4 @@ app.include_router(model.router, prefix="/api")
 app.include_router(connection.router, prefix="/api")
 app.include_router(icon_router, prefix="/api")
 app.include_router(vdb.router, prefix="/api")
+app.include_router(collection.router, prefix="/api")
