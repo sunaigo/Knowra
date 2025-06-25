@@ -94,6 +94,7 @@ class KnowledgeBase(Base):
     auto_process_on_upload = Column(Boolean, default=True)
     team_id = Column(Integer, nullable=False)
     embedding_model_id = Column(Integer)
+    icon_name = Column(String(100), nullable=True, comment='图标名称')
 
     owner = relationship(
         "User",

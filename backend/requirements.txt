@@ -142,3 +142,4 @@ chroma
 pgvector
 psycopg2-binary
 pymilvus
+loguru

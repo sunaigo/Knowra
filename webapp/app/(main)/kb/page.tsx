@@ -14,6 +14,9 @@ import { useActiveTeamId, useTeams } from '@/stores/team-store';
 import { useUser } from '@/stores/user-store';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { CustomSvgIcon } from '@/components/custom-svg-icon';
+import * as HeroIconsSolid from "@heroicons/react/24/solid";
+import * as HeroIconsOutline from "@heroicons/react/24/outline";
 
 // 定义知识库数据类型
 interface KnowledgeBase {
@@ -22,10 +25,64 @@ interface KnowledgeBase {
   description: string | null;
   doc_count: number;
   created_at: string;
+  icon_name: string | null;
   owner: {
     username: string;
   };
 }
+
+// 图标渲染组件
+const IconRenderer = ({ iconName }: { iconName: string }) => {
+  const [iconContent, setIconContent] = useState<string | null>(null);
+  const [isHeroIcon, setIsHeroIcon] = useState(false);
+  const [HeroIcon, setHeroIcon] = useState<any>(null);
+  const [hasRequested, setHasRequested] = useState(false);
+
+  useEffect(() => {
+    if (!iconName || hasRequested) return;
+
+    // 检查是否是Heroicons
+    const solidIcon = (HeroIconsSolid as any)[iconName];
+    const outlineIcon = (HeroIconsOutline as any)[iconName];
+    
+    if (solidIcon || outlineIcon) {
+      setIsHeroIcon(true);
+      setHeroIcon(solidIcon || outlineIcon);
+      setHasRequested(true);
+    } else {
+      // 获取自定义图标内容
+      setHasRequested(true);
+      get(`/icons/custom?names=${iconName}`)
+        .then(data => {
+          if (data.data && data.data.length > 0) {
+            setIconContent(data.data[0].content);
+          }
+        })
+        .catch(err => {
+          console.error('获取图标内容失败:', err);
+        });
+    }
+  }, [iconName, hasRequested]);
+
+  if (!iconName) return null;
+
+  if (isHeroIcon && HeroIcon) {
+    return <HeroIcon className="w-8 h-8 text-primary" />;
+  }
+
+  if (iconContent) {
+    return (
+      <CustomSvgIcon 
+        content={iconContent} 
+        width={32} 
+        height={32} 
+        className="text-primary" 
+      />
+    );
+  }
+
+  return null;
+};
 
 const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
   const router = useRouter();
@@ -76,9 +133,16 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
       <Link href={`/kb/${kb.id}`} className="block hover:bg-muted/50 rounded-lg">
         <Card className="h-full">
           <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-              <CardTitle>{kb.name}</CardTitle>
-              <CardDescription>{kb.description || '暂无描述'}</CardDescription>
+            <div className="flex items-center gap-3">
+              {kb.icon_name && (
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <IconRenderer iconName={kb.icon_name} />
+                </div>
+              )}
+              <div>
+                <CardTitle>{kb.name}</CardTitle>
+                <CardDescription>{kb.description || '暂无描述'}</CardDescription>
+              </div>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -153,9 +217,12 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
 const KBSkeleton = () => (
     <Card>
         <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-                <Skeleton className="h-6 w-32 mb-2" />
-                <Skeleton className="h-4 w-48" />
+            <div className="flex items-center gap-3">
+                <Skeleton className="w-8 h-8 rounded-full" />
+                <div>
+                    <Skeleton className="h-6 w-32 mb-2" />
+                    <Skeleton className="h-4 w-48" />
+                </div>
             </div>
             <Skeleton className="h-8 w-8 rounded-full" />
         </CardHeader>

@@ -11,7 +11,8 @@ def create_kb(db: Session, kb_in: KnowledgeBaseCreate, owner_id: int):
         owner_id=owner_id,
         auto_process_on_upload=kb_in.auto_process_on_upload,
         embedding_model_id=kb_in.embedding_model_id,
-        team_id=kb_in.team_id
+        team_id=kb_in.team_id,
+        icon_name=kb_in.icon_name
     )
     db.add(kb)
     db.commit()
@@ -48,11 +49,8 @@ def update_kb(db: Session, kb_id: int, kb_in: KnowledgeBaseUpdate):
     if not kb:
         return None
     update_data = kb_in.dict(exclude_unset=True)
-    print(f"[update_kb] update_data: {update_data}")
-    print(f"[update_kb] before: chunk_size={kb.chunk_size}, overlap={kb.overlap}")
     for field, value in update_data.items():
         setattr(kb, field, value)
-    print(f"[update_kb] after: chunk_size={kb.chunk_size}, overlap={kb.overlap}")
     db.commit()
     db.refresh(kb)
     return kb

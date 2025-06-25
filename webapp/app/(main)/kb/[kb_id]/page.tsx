@@ -34,6 +34,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { DocumentSettingsDialog } from "@/components/document-settings-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CustomSvgIcon } from '@/components/custom-svg-icon'
 
 export default function KnowledgeBasePage() {
   const params = useParams()
@@ -265,7 +266,12 @@ export default function KnowledgeBasePage() {
     <>
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">{kb?.name}</h2>
+          <div className="flex items-center gap-4">
+            {kb?.icon_name && (
+              <CustomSvgIcon name={kb.icon_name} width={48} height={48} className="text-primary" />
+            )}
+            <h2 className="text-3xl font-bold tracking-tight">{kb?.name}</h2>
+          </div>
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"

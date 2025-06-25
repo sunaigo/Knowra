@@ -16,6 +16,7 @@ import { Loader2 } from "lucide-react"
 import { fetcher } from "@/lib/request"
 import { useActiveTeamId, useTeams } from "@/stores/team-store"
 import { useEffect } from "react"
+import { SvgIconPicker } from "@/components/svg-icon-picker"
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "名称至少需要2个字符。" }),
@@ -25,6 +26,7 @@ const formSchema = z.object({
   overlap: z.coerce.number().min(0, { message: "重叠部分不能为负数。" }),
   auto_process_on_upload: z.boolean(),
   embedding_model_id: z.coerce.number().optional().nullable(),
+  icon_name: z.string().optional(),
 })
 
 export type KnowledgeBaseFormValues = z.infer<typeof formSchema>;
@@ -57,6 +59,7 @@ export function KnowledgeBaseForm({
       overlap: initialData?.overlap || 200,
       auto_process_on_upload: initialData?.auto_process_on_upload ?? true,
       embedding_model_id: initialData?.embedding_model_id ?? null,
+      icon_name: initialData?.icon_name || "",
     },
   })
 
@@ -141,6 +144,25 @@ export function KnowledgeBaseForm({
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="icon_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>知识库图标</FormLabel>
+                  <FormControl>
+                    <SvgIconPicker
+                      value={field.value || ""}
+                      onChange={(value) => {
+                        field.onChange(value);
+                      }}
+                    />
+                  </FormControl>
+                  <FormDescription>为知识库选择一个图标，便于识别。</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -251,7 +273,8 @@ export function KnowledgeBaseForm({
                 取消
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "处理中..." : submitButtonText}
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {submitButtonText}
             </Button>
         </div>
       </form>

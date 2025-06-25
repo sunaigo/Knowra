@@ -12,6 +12,7 @@ class KnowledgeBaseBase(BaseModel):
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     auto_process_on_upload: Optional[bool] = True
     embedding_model_id: Optional[int] = None
+    icon_name: Optional[str] = None
 
 class KnowledgeBaseUpdate(BaseModel):
     name: Optional[str] = None
@@ -20,6 +21,7 @@ class KnowledgeBaseUpdate(BaseModel):
     overlap: Optional[int] = None
     auto_process_on_upload: Optional[bool] = None
     embedding_model_id: Optional[int] = None
+    icon_name: Optional[str] = None
 
 class KnowledgeBaseOut(KnowledgeBaseBase):
     id: int
@@ -33,6 +35,7 @@ class KnowledgeBaseOut(KnowledgeBaseBase):
     last_file_time: Optional[datetime] = None
     embedding_model_id: Optional[int] = None
     embedding_model: Optional[ModelOut] = None
+    icon_name: Optional[str] = None
     class Config:
         from_attributes = True  # pydantic v2写法，替代orm_mode 
 
