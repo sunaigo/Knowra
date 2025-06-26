@@ -117,4 +117,15 @@ def create_collection(collection_in: CollectionCreate, db: Session = Depends(get
         "created_at": collection.created_at,
         "updated_at": collection.updated_at,
     }
-    return BaseResponse(code=200, data=data, message="创建成功") 
+    return BaseResponse(code=200, data=data, message="创建成功")
+
+@router.delete("/{collection_id}", response_model=BaseResponse)
+def delete_collection(collection_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    if not collection:
+        return BaseResponse(code=404, message="未找到对应 collection")
+    if collection.owner_id != current_user.id:
+        return BaseResponse(code=403, message="无权限删除该 collection")
+    db.delete(collection)
+    db.commit()
+    return BaseResponse(code=200, message="删除成功") 
