@@ -10,16 +10,16 @@ import { Switch } from "@/components/ui/switch"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter, useSearchParams } from "next/navigation"
-import useSWR from "swr"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2 } from "lucide-react"
-import { fetcher } from "@/lib/request"
+import { get } from "@/lib/request"
 import { useActiveTeamId, useTeams } from "@/stores/user-store"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { SvgIconPicker } from "@/components/svg-icon-picker"
+import React from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
+import { Loader2 } from "lucide-react"
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: "名称至少需要2个字符。" }),
+  name: z.string().min(2, { message: "名称至少需2个字符。" }),
   description: z.string(),
   team_id: z.coerce.number({ required_error: "必须选择一个团队。" }),
   chunk_size: z.coerce.number().min(100, { message: "分块大小至少为100。" }),
@@ -27,6 +27,7 @@ const formSchema = z.object({
   auto_process_on_upload: z.boolean(),
   embedding_model_id: z.coerce.number().optional().nullable(),
   icon_name: z.string().optional(),
+  collection_id: z.coerce.number({ required_error: "必须选择一个 Collection" }).nullable(),
 })
 
 export type KnowledgeBaseFormValues = z.infer<typeof formSchema>;
@@ -36,6 +37,7 @@ interface KnowledgeBaseFormProps {
   onSubmit: (values: KnowledgeBaseFormValues) => Promise<void>;
   isSubmitting?: boolean;
   submitButtonText?: string;
+  editingKbId?: number;
 }
 
 export function KnowledgeBaseForm({
@@ -43,6 +45,7 @@ export function KnowledgeBaseForm({
   onSubmit,
   isSubmitting = false,
   submitButtonText = "保存",
+  editingKbId,
 }: KnowledgeBaseFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -60,6 +63,7 @@ export function KnowledgeBaseForm({
       auto_process_on_upload: initialData?.auto_process_on_upload ?? true,
       embedding_model_id: initialData?.embedding_model_id ?? null,
       icon_name: initialData?.icon_name || "",
+      collection_id: initialData?.collection_id ?? null,
     },
   })
 
@@ -73,10 +77,92 @@ export function KnowledgeBaseForm({
   }, [activeTeamId, searchParams, form])
 
   // 拉取 embedding 模型列表
-  const { data: models, isLoading: modelLoading } = useSWR(
-    "/models?model_type=embedding",
-    fetcher
-  )
+  const [models, setModels] = React.useState<any[]>([])
+  const [modelLoading, setModelLoading] = React.useState(false)
+  useEffect(() => {
+    async function fetchModels() {
+      setModelLoading(true)
+      try {
+        const response = await get("/models?model_type=embedding")
+        if (response && response.code === 200 && Array.isArray(response.data)) {
+          setModels(response.data)
+        }
+      } catch (error) {
+        console.error('获取模型列表失败:', error)
+      } finally {
+        setModelLoading(false)
+      }
+    }
+    fetchModels()
+  }, [])
+
+  // 拉取团队下所有 VDB
+  const [vdbs, setVdbs] = React.useState<any[]>([])
+  useEffect(() => {
+    async function fetchVdbs() {
+      if (!activeTeamId) return
+      try {
+        const response = await get(`/vdb?team_id=${activeTeamId}`)
+        if (response && response.code === 200 && Array.isArray(response.data)) {
+          setVdbs(response.data)
+        }
+      } catch (error) {
+        console.error('获取 VDB 列表失败:', error)
+      }
+    }
+    fetchVdbs()
+  }, [activeTeamId])
+
+  const [selectedVdbId, setSelectedVdbId] = React.useState<number | null>(null)
+
+  // 1. 新建时如果有 vdbs，自动选中第一个 vdb
+  useEffect(() => {
+    if (!initialData?.collection_id && vdbs && vdbs.length > 0 && !selectedVdbId) {
+      setSelectedVdbId(vdbs[0].id)
+    }
+  }, [vdbs, initialData?.collection_id, selectedVdbId])
+
+  // 组装所有 collection（预加载所有 vdb 下的 collection）
+  const [allCollections, setAllCollections] = React.useState<any[]>([])
+  useEffect(() => {
+    async function fetchAllCollections() {
+      if (!vdbs || vdbs.length === 0 || !activeTeamId) return
+      let all: any[] = []
+      for (const vdb of vdbs) {
+        try {
+          // 构建请求 URL，添加 exclude_bound 参数
+          let url = `/collection?vdb_id=${vdb.id}&team_id=${activeTeamId}&exclude_bound=true`
+          // 如果是编辑模式，传递 editing_kb_id
+          if (editingKbId) {
+            url += `&editing_kb_id=${editingKbId}`
+          }
+          const response = await get(url)
+          if (response && response.code === 200 && Array.isArray(response.data)) {
+            all = all.concat(response.data)
+          }
+        } catch (error) {
+          // 忽略单个 VDB 的请求失败
+        }
+      }
+      setAllCollections(all)
+    }
+    fetchAllCollections()
+  }, [vdbs, activeTeamId, editingKbId])
+
+  // 2. 编辑时根据 collection_id 反查 vdb_id
+  useEffect(() => {
+    async function fetchVdbIdByCollection() {
+      if (initialData?.collection_id) {
+        try {
+          const response = await get(`/collection/${initialData.collection_id}`)
+          if (response && response.code === 200 && response.data && response.data.vdb_id) {
+            setSelectedVdbId(response.data.vdb_id)
+          }
+        } catch {}
+      }
+    }
+    fetchVdbIdByCollection()
+  }, [initialData?.collection_id])
 
   return (
     <Form {...form}>
@@ -196,6 +282,51 @@ export function KnowledgeBaseForm({
                     </SelectContent>
                   </Select>
                   <FormDescription>选择用于文本向量化的 embedding 模型。</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="collection_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>绑定 Collection</FormLabel>
+                  <Select
+                    value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
+                    onValueChange={val => {
+                      const selectedCollection = allCollections.find((c: any) => String(c.id) === val)
+                      if (selectedCollection) {
+                        setSelectedVdbId(selectedCollection.vdb_id)
+                      }
+                      field.onChange(val ? Number(val) : null)
+                    }}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={vdbs && vdbs.length > 0 ? "请选择 Collection" : "暂无 Collection"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {vdbs && vdbs.length > 0 ? (
+                        vdbs.map((vdb: any) => {
+                          const groupCollections = allCollections.filter((c: any) => c.vdb_id === vdb.id)
+                          if (groupCollections.length === 0) return null
+                          return (
+                            <SelectGroup key={vdb.id}>
+                              <SelectLabel>{vdb.name}</SelectLabel>
+                              {groupCollections.map((c: any) => (
+                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )
+                        })
+                      ) : (
+                        <div className="px-2 py-2 text-muted-foreground">暂无可用 Collection</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>请选择知识库要绑定的 Collection。</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

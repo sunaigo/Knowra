@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
-import useSWR from "swr"
+import { useState, useEffect } from "react"
 import { ColumnDef } from "@tanstack/react-table"
 import { File, PlusCircle, MoreHorizontal, Settings, PlayCircle, Eye, Trash2, Edit, Pause } from "lucide-react"
 import * as React from "react"
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable } from "@/components/ui/data-table"
-import { del, post, put } from "@/lib/request"
+import { del, post, put, get } from "@/lib/request"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,18 +38,66 @@ import { CustomSvgIcon } from '@/components/custom-svg-icon'
 
 export default function KnowledgeBasePage() {
   const params = useParams()
-  const kb_id = params.kb_id as string
   const router = useRouter()
+  const kb_id = params.kb_id as string
   const { t } = useTranslation()
-  const {
-    data: kb,
-    isLoading: isKbLoading,
-  } = useSWR<KnowledgeBase>(kb_id ? `/kb/${kb_id}` : null)
-  const {
-    data: documents,
-    isLoading: isDocLoading,
-    mutate: mutateDocuments,
-  } = useSWR<Document[]>(kb_id ? `/kb/${kb_id}/documents` : null)
+  
+  const [kb, setKb] = useState<KnowledgeBase | null>(null)
+  const [documents, setDocuments] = useState<Document[]>([])
+  const [isKbLoading, setIsKbLoading] = useState(false)
+  const [isDocLoading, setIsDocLoading] = useState(false)
+  const [kbError, setKbError] = useState<string | null>(null)
+  const [docsError, setDocsError] = useState<string | null>(null)
+
+  // 获取知识库信息
+  useEffect(() => {
+    async function fetchKb() {
+      if (!kb_id) return
+      setIsKbLoading(true)
+      setKbError(null)
+      try {
+        const response = await get(`/kb/${kb_id}`)
+        if (response && response.code === 200 && response.data) {
+          setKb(response.data)
+        } else {
+          setKbError('获取知识库信息失败')
+        }
+      } catch (err: any) {
+        setKbError(err.message || '获取知识库信息失败')
+      } finally {
+        setIsKbLoading(false)
+      }
+    }
+    fetchKb()
+  }, [kb_id])
+
+  // 获取文档列表
+  const fetchDocuments = React.useCallback(async () => {
+    if (!kb_id) return
+    setIsDocLoading(true)
+    setDocsError(null)
+    try {
+      const response = await get(`/kb/${kb_id}/documents`)
+      if (response && response.code === 200 && Array.isArray(response.data)) {
+        setDocuments(response.data)
+      } else {
+        setDocsError('获取文档列表失败')
+      }
+    } catch (err: any) {
+      setDocsError(err.message || '获取文档列表失败')
+    } finally {
+      setIsDocLoading(false)
+    }
+  }, [kb_id])
+
+  useEffect(() => {
+    fetchDocuments()
+  }, [fetchDocuments])
+
+  // 替代 mutateDocuments 的函数
+  const mutateDocuments = () => {
+    fetchDocuments()
+  }
 
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [isProcessing, setIsProcessing] = React.useState<number | null>(null)
@@ -63,7 +111,7 @@ export default function KnowledgeBasePage() {
     setIsPausing(doc.id)
     try {
       await put(`/kb/documents/${doc.id}`, { status: "paused" })
-      await mutateDocuments()
+      mutateDocuments()
     } catch (error) {
       console.error("Failed to pause document", error)
     } finally {
@@ -76,7 +124,7 @@ export default function KnowledgeBasePage() {
     // 1. Reset offset to 0
     try {
       await put(`/kb/documents/${doc.id}`, { parse_offset: 0 })
-      await mutateDocuments() // Re-fetch to confirm offset is 0
+      mutateDocuments() // Re-fetch to confirm offset is 0
     } catch (error) {
       console.error("Failed to reset document offset", error)
       return // Stop if reset fails
@@ -94,8 +142,8 @@ export default function KnowledgeBasePage() {
     setIsProcessing(doc.id)
     setIsConfirming(false)
     try {
-      await post(`/kb/documents/${doc.id}/process`)
-      await mutateDocuments()
+      await post(`/kb/documents/${doc.id}/process`, {})
+      mutateDocuments()
     } catch (error) {
       console.error("Failed to process document", error)
     } finally {
@@ -122,7 +170,7 @@ export default function KnowledgeBasePage() {
     setIsDeleting(true)
     try {
       await del(`/kb/documents/${id}`)
-      await mutateDocuments()
+      mutateDocuments()
     } catch (error) {
       console.error("Failed to delete document", error)
     } finally {
@@ -267,9 +315,6 @@ export default function KnowledgeBasePage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between space-y-2">
           <div className="flex items-center gap-4">
-            {kb?.icon_name && (
-              <CustomSvgIcon name={kb.icon_name} width={48} height={48} className="text-primary" />
-            )}
             <h2 className="text-3xl font-bold tracking-tight">{kb?.name}</h2>
           </div>
           <div className="flex items-center space-x-2">

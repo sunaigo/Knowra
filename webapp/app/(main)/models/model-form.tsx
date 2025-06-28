@@ -113,7 +113,7 @@ export default function ModelForm({ initialData }: ModelFormProps) {
     )}`
 
     try {
-      await post(url)
+      await post(url, {})
       setTestStatus("success")
       toast.success("连接测试成功！")
     } catch (err: any) {

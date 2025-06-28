@@ -1,9 +1,8 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import dynamic from "next/dynamic"
-import useSWR from "swr"
 import { get } from "@/lib/request"
 import { Skeleton } from "@/components/ui/skeleton"
 import TextViewer from "@/components/text-viewer"
@@ -24,11 +23,30 @@ export default function DocumentPreviewPage() {
   const params = useParams()
   const doc_id = params.doc_id as string
 
-  const {
-    data: documentInfo,
-    isLoading,
-    error,
-  } = useSWR<Document>(doc_id ? `/kb/documents/${doc_id}` : null)
+  const [documentInfo, setDocumentInfo] = useState<Document | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchDocument() {
+      if (!doc_id) return
+      setIsLoading(true)
+      setError(null)
+      try {
+        const response = await get(`/kb/documents/${doc_id}`)
+        if (response && response.code === 200 && response.data) {
+          setDocumentInfo(response.data)
+        } else {
+          setError('获取文档信息失败')
+        }
+      } catch (err: any) {
+        setError(err.message || '获取文档信息失败')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchDocument()
+  }, [doc_id])
 
   const fileDownloadUrl = `/api/kb/documents/${doc_id}/download`
 
@@ -45,7 +63,7 @@ export default function DocumentPreviewPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-red-500">
         <h2 className="text-2xl font-bold mb-2">Error</h2>
-        <p>{error.message}</p>
+        <p>{error}</p>
         <Button onClick={() => window.location.reload()} className="mt-4">
           Try Again
         </Button>
@@ -58,17 +76,17 @@ export default function DocumentPreviewPage() {
   }
 
   const isPdf =
-    documentInfo.filetype.includes("pdf") ||
-    documentInfo.filename.toLowerCase().endsWith(".pdf")
+    documentInfo?.filetype?.includes("pdf") ||
+    documentInfo?.filename?.toLowerCase().endsWith(".pdf")
   const isImage = [
     "image/jpeg",
     "image/png",
     "image/gif",
     "image/webp",
-  ].includes(documentInfo.filetype)
+  ].includes(documentInfo?.filetype || "")
   const isTxt =
-    documentInfo.filetype === "text/plain" ||
-    documentInfo.filename.toLowerCase().endsWith(".txt")
+    documentInfo?.filetype === "text/plain" ||
+    documentInfo?.filename?.toLowerCase().endsWith(".txt")
 
   return (
     <div className="w-full h-full flex flex-col">

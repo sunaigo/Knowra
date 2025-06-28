@@ -8,4 +8,5 @@ export interface KnowledgeBase {
   chunk_size: number
   overlap: number
   auto_process_on_upload: boolean
+  collection_id: number
 } 

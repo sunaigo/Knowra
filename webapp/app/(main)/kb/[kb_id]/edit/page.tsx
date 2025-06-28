@@ -1,9 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import useSWR from "swr"
-import { put } from "@/lib/request"
+import { put, get } from "@/lib/request"
 import { KnowledgeBaseForm, KnowledgeBaseFormValues } from "@/app/(main)/kb/kb-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -58,10 +57,32 @@ export default function KBEditPage() {
   const params = useParams()
   const kb_id = params.kb_id as string
 
-  const { data: kbData, error: kbError, isLoading } = useSWR(kb_id ? `/kb/${kb_id}` : null)
-
+  const [kbData, setKbData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [kbError, setKbError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchKb() {
+      if (!kb_id) return
+      setIsLoading(true)
+      setKbError(null)
+      try {
+        const response = await get(`/kb/${kb_id}`)
+        if (response && response.code === 200 && response.data) {
+          setKbData(response.data)
+        } else {
+          setKbError('获取知识库信息失败')
+        }
+      } catch (err: any) {
+        setKbError(err.message || '获取知识库信息失败')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchKb()
+  }, [kb_id])
 
   async function onSubmit(values: KnowledgeBaseFormValues) {
     setIsSubmitting(true)
@@ -88,7 +109,7 @@ export default function KBEditPage() {
         <EditKBSkeleton />
       </div>
   )
-  if (kbError) return <div className="text-red-500">加载知识库数据失败: {kbError.message}</div>
+  if (kbError) return <div className="text-red-500">加载知识库数据失败: {kbError}</div>
 
   return (
     <div className="flex justify-center px-4">
@@ -105,6 +126,7 @@ export default function KBEditPage() {
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
           submitButtonText="保存更改"
+          editingKbId={Number(kb_id)}
         />
         
         {error && <p className="text-sm text-destructive">{error}</p>}

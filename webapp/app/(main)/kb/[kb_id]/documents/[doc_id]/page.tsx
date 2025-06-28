@@ -1,8 +1,8 @@
 "use client"
 
-import useSWR, { useSWRConfig } from "swr"
+
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import React from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import isEqual from "lodash/isEqual"
@@ -81,7 +81,7 @@ export default function DocumentChunksPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t } = useTranslation()
-  const { mutate } = useSWRConfig()
+
 
   const doc_id = params.doc_id as string
   const kb_id = params.kb_id as string
@@ -95,16 +95,74 @@ export default function DocumentChunksPage() {
   const documentUrl = doc_id ? `/kb/documents/${doc_id}` : null
   const kbUrl = kb_id ? `/kb/${kb_id}` : null
 
-  const { data: chunksResponse, isLoading: isLoadingChunks } =
-    useSWR<{ code: number; message: string; data: ChunksResponse }>(chunksUrl, get)
-  const { data: documentResponse, isLoading: isLoadingDocument } =
-    useSWR<{ code: number; message: string; data: Doc }>(documentUrl, get)
-  const { data: kbResponse, isLoading: isLoadingKb } =
-    useSWR<{ code: number; message: string; data: KnowledgeBase }>(kbUrl, get)
+  const [chunksData, setChunksData] = useState<ChunksResponse | null>(null)
+  const [documentData, setDocumentData] = useState<Doc | null>(null)
+  const [kbData, setKbData] = useState<KnowledgeBase | null>(null)
+  const [isLoadingChunks, setIsLoadingChunks] = useState(false)
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false)
+  const [isLoadingKb, setIsLoadingKb] = useState(false)
 
-  const chunksData = chunksResponse?.data
-  const documentData = documentResponse?.data
-  const kbData = kbResponse?.data
+  const fetchChunks = useCallback(async () => {
+    if (!doc_id) return
+    setIsLoadingChunks(true)
+    try {
+      const response = await get(`/kb/documents/${doc_id}/chunks?page=${page}&limit=${limit}`)
+      if (response && response.code === 200 && response.data) {
+        setChunksData(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch chunks:', error)
+    } finally {
+      setIsLoadingChunks(false)
+    }
+  }, [doc_id, page, limit])
+
+  const fetchDocument = useCallback(async () => {
+    if (!doc_id) return
+    setIsLoadingDocument(true)
+    try {
+      const response = await get(`/kb/documents/${doc_id}`)
+      if (response && response.code === 200 && response.data) {
+        setDocumentData(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch document:', error)
+    } finally {
+      setIsLoadingDocument(false)
+    }
+  }, [doc_id])
+
+  const fetchKb = useCallback(async () => {
+    if (!kb_id) return
+    setIsLoadingKb(true)
+    try {
+      const response = await get(`/kb/${kb_id}`)
+      if (response && response.code === 200 && response.data) {
+        setKbData(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch knowledge base:', error)
+    } finally {
+      setIsLoadingKb(false)
+    }
+  }, [kb_id])
+
+  useEffect(() => {
+    fetchChunks()
+  }, [fetchChunks])
+
+  useEffect(() => {
+    fetchDocument()
+  }, [fetchDocument])
+
+  useEffect(() => {
+    fetchKb()
+  }, [fetchKb])
+
+  const refreshData = () => {
+    fetchChunks()
+    fetchDocument()
+  }
 
   const totalPages = chunksData ? Math.ceil(chunksData.total / chunksData.limit) : 0
 
@@ -155,10 +213,9 @@ export default function DocumentChunksPage() {
 
   const processDocument = async () => {
     try {
-      await post(`/kb/documents/${doc_id}/process`)
+      await post(`/kb/documents/${doc_id}/process`, {})
       toast.success(t("documentChunks.reprocessStart", "Reprocessing started..."))
-      mutate(documentUrl)
-      mutate(chunksUrl)
+      refreshData()
     } catch (error) {
       toast.error(t("documentChunks.reprocessFail", "Failed to start reprocessing."))
       console.error("Failed to process document:", error)
@@ -314,7 +371,7 @@ export default function DocumentChunksPage() {
         document={documentData}
         knowledgeBase={kbData || null}
         onSuccess={() => {
-          mutate(documentUrl)
+          fetchDocument()
           setIsSettingsOpen(false)
           toast.success("Settings updated successfully.")
         }}

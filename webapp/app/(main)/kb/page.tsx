@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical, PlusCircle, FileText, Share2, Trash2, Edit, LogOut } from 'lucide-react';
 import { get, del } from '@/lib/request';
-import useSWR from 'swr';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useActiveTeamId, useTeams } from '@/stores/user-store';
 import { useUser } from '@/stores/user-store';
@@ -117,8 +116,10 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
       if (res.code === 200) {
         toast.success('知识库删除成功！');
         setDeleteDialogOpen(false);
-        // 刷新页面或触发 SWR mutate
-        window.location.reload();
+        // 重新获取知识库列表而不是刷新整个页面
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
       } else {
         toast.error(res.message || '知识库删除失败');
       }
@@ -238,9 +239,32 @@ const KBSkeleton = () => (
 
 export default function KBPage() {
   const teamId = useActiveTeamId();
-  const { data: knowledgeBases, error, isLoading } = useSWR<KnowledgeBase[]>(teamId ? `/kb?team_id=${teamId}` : null);
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchKnowledgeBases() {
+      if (!teamId) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await get(`/kb?team_id=${teamId}`);
+        if (response && response.code === 200 && Array.isArray(response.data)) {
+          setKnowledgeBases(response.data);
+        } else {
+          setError('获取知识库列表失败');
+        }
+      } catch (err: any) {
+        setError(err.message || '获取知识库列表失败');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchKnowledgeBases();
+  }, [teamId]);
   
-  if (error) return <div>加载失败: {error.message}</div>;
+  if (error) return <div>加载失败: {error}</div>;
 
   return (
     <div className="space-y-4">
