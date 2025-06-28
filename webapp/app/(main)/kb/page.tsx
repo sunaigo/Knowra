@@ -10,7 +10,7 @@ import { MoreVertical, PlusCircle, FileText, Share2, Trash2, Edit, LogOut } from
 import { get, del } from '@/lib/request';
 import useSWR from 'swr';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useActiveTeamId, useTeams } from '@/stores/team-store';
+import { useActiveTeamId, useTeams } from '@/stores/user-store';
 import { useUser } from '@/stores/user-store';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';

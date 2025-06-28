@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from "framer-motion"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { useFetchUser } from '@/stores/user-store'
 
 export function LoginForm({
   className,
@@ -38,7 +37,6 @@ export function LoginForm({
   const [regError, setRegError] = useState("")
   const router = useRouter()
   const { t } = useTranslation('common')
-  const fetchUser = useFetchUser()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -48,7 +46,7 @@ export function LoginForm({
       const data = await post("/users/login", { username, password }, { form: true })
       if (data.code === 200 && data.data?.access_token) {
         localStorage.setItem("token", data.data.access_token)
-        await fetchUser()
+        // 登录成功后不再主动获取用户信息，交由 layout 处理
         router.replace("/")
       } else {
         setError(data.message || t('login_failed'))

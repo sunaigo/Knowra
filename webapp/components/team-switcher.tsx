@@ -23,10 +23,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import {
   useTeams,
   useActiveTeamId,
-  useTeamStoreIsLoading,
-  useTeamStoreActions,
-  useTeamStoreIsInitialized,
-} from "@/stores/team-store"
+  useIsUserLoading,
+  setActiveTeamId,
+} from "@/stores/user-store"
 import { TeamWithRole } from "@/schemas/team"
 
 function TeamSwitcherSkeleton() {
@@ -54,15 +53,7 @@ export function TeamSwitcher() {
   // Zustand store state and actions
   const teams = useTeams()
   const activeTeamId = useActiveTeamId()
-  const isLoading = useTeamStoreIsLoading()
-  const isInitialized = useTeamStoreIsInitialized()
-  const { fetchTeams, setActiveTeamId } = useTeamStoreActions()
-
-  React.useEffect(() => {
-    if (!isInitialized) {
-      fetchTeams()
-    }
-  }, [isInitialized, fetchTeams])
+  const isLoading = useIsUserLoading()
 
   const handleTeamSelect = (teamId: string) => {
     setActiveTeamId(teamId)
@@ -80,11 +71,11 @@ export function TeamSwitcher() {
     return teams.find((team) => team.id.toString() === currentId) || null
   }, [teams, activeTeamId, params.team_id])
 
-  if (isLoading && !isInitialized) {
+  if (isLoading) {
     return <TeamSwitcherSkeleton />
   }
   
-  if (!selectedTeam && isInitialized) {
+  if (!selectedTeam) {
     return (
        <SidebarMenu>
         <SidebarMenuItem>

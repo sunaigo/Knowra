@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useRef, useEffect } from "react"
 import { post } from "@/lib/request"
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
-import { useActiveTeamId } from "@/stores/team-store"
+import { useActiveTeamId } from "@/stores/user-store"
 
 const vdbTypes = [
   { value: "chroma", label: "Chroma (本地路径)" },

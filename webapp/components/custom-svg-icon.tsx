@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import pako from "pako";
 import { get } from "@/lib/request";
+import * as HeroIconsSolid from "@heroicons/react/24/solid";
+import * as HeroIconsOutline from "@heroicons/react/24/outline";
 
 interface CustomSvgIconProps {
   name?: string;

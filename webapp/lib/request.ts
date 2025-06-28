@@ -2,6 +2,7 @@ import { useRouter } from 'next/navigation'
 import { useRef } from 'react'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
 
 function getToken() {
   if (typeof window !== "undefined") {
@@ -71,6 +72,7 @@ export async function request(
   } else if (!isFormData && !restOptions.form && body && isPlainObject(body)) {
     body = JSON.stringify(body)
   }
+
   const res = await fetch(fullUrl, {
     ...restOptions,
     headers,
@@ -87,11 +89,11 @@ export async function request(
     } catch (e) {
       // Not a JSON response, do nothing
     }
-    // 401时调用自定义回调
+    // 401时直接跳转登录页
     if (res.status === 401 && typeof window !== 'undefined') {
-      if (typeof options.on401 === 'function') {
-        options.on401();
-      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('activeTeamId');
+      window.location.replace('/login');
       return;
     }
     const err = new Error(errorDetail)
@@ -113,21 +115,14 @@ export async function request(
 
 export const fetcher = (url: string) => get(url).then(data => data.data);
 
-export function get(url: string, options?: RequestInit & { responseType?: 'json' | 'blob' }) {
+export function get(url: string, options?: (RequestInit & { responseType?: 'json' | 'blob'; on401?: () => void })) {
   return request(url, { ...options, method: "GET" })
 }
 
-export const post = async <T = any>(
-  url: string,
-  data?: any,
-  options?: RequestInit & { form?: boolean; responseType?: 'json' | 'blob' },
-): Promise<T> => {
-  return request(url, {
-    method: 'POST',
-    body: data,
-    ...options,
-  });
-};
+export function post(url: string, body: any, options?: Omit<RequestInit, 'body'> & { form?: boolean, on401?: () => void }) {
+  const { on401, ...restOptions } = options || {}
+  return request(url, { ...restOptions, method: "POST", body })
+}
 
 export const put = async <T = any>(
   url: string,

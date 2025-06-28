@@ -18,7 +18,6 @@ import {
   Database,
 } from "lucide-react"
 import { useTranslation } from 'react-i18next'
-import { useEffect } from 'react'
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
@@ -31,7 +30,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useUser, useFetchUser } from '@/stores/user-store'
+import { useUser } from '@/stores/user-store'
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { t } = useTranslation('common')
@@ -109,11 +108,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }), [t])
 
   const user = useUser()
-  const fetchUser = useFetchUser()
-
-  useEffect(() => {
-    if (!user) fetchUser()
-  }, [user, fetchUser])
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -125,7 +119,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>
-        {user && (user.name || user.username) ? (
+        {user && user.username ? (
           <NavUser user={user} />
         ) : (
           <div className="flex items-center gap-2 p-2">

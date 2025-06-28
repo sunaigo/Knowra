@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, field_serializer
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
+from app.schemas.team import TeamWithRole
 
 class UserBase(BaseModel):
     username: str
@@ -19,6 +20,7 @@ class UserOut(BaseModel):
     email: Optional[str] = None
     is_active: bool
     created_at: datetime
+    teams: Optional[List[TeamWithRole]] = None
     
     @field_serializer('created_at')
     def serialize_created_at(self, dt: datetime, _info):

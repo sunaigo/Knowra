@@ -61,26 +61,42 @@ def get_users(db: Session = Depends(get_db), page: int = Query(1, gt=0), limit: 
     }, message="success")
 
 @router.get("/me", response_model=BaseResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     from app.schemas.user import UserOut
-    user_out = UserOut.model_validate(current_user).model_dump()
-    return BaseResponse(code=200, data=user_out, message="success")
-
-@router.get("/me/teams", response_model=BaseResponse)
-def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.schemas.team import TeamWithRole
+    # 查询用户所在团队及成员数量
     associations = db.query(UserTeam).filter(UserTeam.user_id == current_user.id).all()
-    
     teams_with_role = []
     for assoc in associations:
+        member_count = db.query(UserTeam).filter(UserTeam.team_id == assoc.team.id).count()
         team_data = TeamWithRole(
             id=assoc.team.id,
             name=assoc.team.name,
             description=assoc.team.description,
             created_at=assoc.team.created_at,
-            role=assoc.role
+            role=assoc.role,
+            member_count=member_count
         )
         teams_with_role.append(team_data)
+    user_out = UserOut.model_validate(current_user).model_dump()
+    user_out["teams"] = [team.model_dump() for team in teams_with_role]
+    return BaseResponse(code=200, data=user_out, message="success")
 
+@router.get("/me/teams", response_model=BaseResponse)
+def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    associations = db.query(UserTeam).filter(UserTeam.user_id == current_user.id).all()
+    teams_with_role = []
+    for assoc in associations:
+        member_count = db.query(UserTeam).filter(UserTeam.team_id == assoc.team.id).count()
+        team_data = TeamWithRole(
+            id=assoc.team.id,
+            name=assoc.team.name,
+            description=assoc.team.description,
+            created_at=assoc.team.created_at,
+            role=assoc.role,
+            member_count=member_count
+        )
+        teams_with_role.append(team_data)
     return BaseResponse(code=200, data=teams_with_role, message="success")
 
 @router.get("/search")

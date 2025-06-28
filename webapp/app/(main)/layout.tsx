@@ -1,24 +1,24 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Settings, Image } from "lucide-react"
+import { useEffect, useRef } from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { BreadcrumbManager } from "@/components/breadcrumb-manager"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
+import { fetchUser } from "@/stores/user-store"
 
 interface MainLayoutProps {
   children: React.ReactNode
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-  const router = useRouter()
+  // 使用 a ref 来确保 fetchUser 的引用在重渲染之间保持稳定
+  const fetchUserRef = useRef(fetchUser)
+
   useEffect(() => {
-    if (typeof window !== "undefined" && !localStorage.getItem("token")) {
-      router.replace("/login")
-    }
-  }, [router])
+    // 仅在首次挂载时调用，作为应用数据的唯一入口
+    fetchUserRef.current()
+  }, [])
 
   return (
     <SidebarProvider>

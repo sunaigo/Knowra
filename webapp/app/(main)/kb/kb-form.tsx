@@ -14,7 +14,7 @@ import useSWR from "swr"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 import { fetcher } from "@/lib/request"
-import { useActiveTeamId, useTeams } from "@/stores/team-store"
+import { useActiveTeamId, useTeams } from "@/stores/user-store"
 import { useEffect } from "react"
 import { SvgIconPicker } from "@/components/svg-icon-picker"
 
