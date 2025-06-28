@@ -37,20 +37,13 @@ export const CustomSvgIcon: React.FC<CustomSvgIconProps> = ({ name, content, wid
   const [svgContent, setSvgContent] = useState<string | null>(content || null);
   const [loading, setLoading] = useState(false);
 
-  // 优先渲染内置Heroicons
-  if (name && (HeroIconsSolid as any)[name]) {
-    const HeroIcon = (HeroIconsSolid as any)[name];
-    return <HeroIcon className={className} style={{ width, height, display: "block" }} />;
-  }
-  if (name && (HeroIconsOutline as any)[name]) {
-    const HeroIcon = (HeroIconsOutline as any)[name];
-    return <HeroIcon className={className} style={{ width, height, display: "block" }} />;
-  }
+  const isHeroIconSolid = name && (HeroIconsSolid as any)[name];
+  const isHeroIconOutline = name && (HeroIconsOutline as any)[name];
 
   // 如果没有content但有name，自动请求后端
   useEffect(() => {
     let ignore = false;
-    if (!content && name) {
+    if (!content && name && !isHeroIconSolid && !isHeroIconOutline) {
       setLoading(true);
       get(`/icons/custom?names=${name}&with_content=true`).then(res => {
         if (!ignore && res.data && res.data.length > 0) {
@@ -61,7 +54,17 @@ export const CustomSvgIcon: React.FC<CustomSvgIconProps> = ({ name, content, wid
       });
     }
     return () => { ignore = true; };
-  }, [name, content]);
+  }, [name, content, isHeroIconSolid, isHeroIconOutline]);
+
+  // 优先渲染内置Heroicons
+  if (isHeroIconSolid) {
+    const HeroIcon = (HeroIconsSolid as any)[name];
+    return <HeroIcon className={className} style={{ width, height, display: "block" }} />;
+  }
+  if (isHeroIconOutline) {
+    const HeroIcon = (HeroIconsOutline as any)[name];
+    return <HeroIcon className={className} style={{ width, height, display: "block" }} />;
+  }
 
   let svg = "";
   try {

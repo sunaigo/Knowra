@@ -287,11 +287,11 @@ class VectorDBConfig(Base):
     description = Column(Text)
     connection_config = Column(JSON, nullable=False)  # 存储所有连接参数
     is_private = Column(Boolean, default=True)
-    allowed_team_ids = Column(JSON, nullable=True)
     embedding_dimension = Column(Integer, default=1536)
     index_type = Column(String(30), default="hnsw")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    shares = relationship("VDBShare", primaryjoin="VectorDBConfig.id == foreign(VDBShare.vdb_id)")
 
 class Collection(Base):
     __tablename__ = "collection"
@@ -300,5 +300,16 @@ class Collection(Base):
     description = Column(Text)
     vdb_id = Column(Integer, nullable=False)  # 逻辑关联，无外键
     owner_id = Column(Integer, nullable=False)  # 逻辑关联，无外键
+    team_id = Column(Integer, nullable=False)  # 新增字段，团队隔离
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class VDBShare(Base):
+    __tablename__ = 'vdb_share'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    vdb_id = Column(Integer, nullable=False)
+    team_id = Column(Integer, nullable=False)
+    status = Column(String(20), default='active')  # active/revoked
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # 可加唯一索引 (vdb_id, team_id) 

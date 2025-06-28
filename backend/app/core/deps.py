@@ -5,6 +5,8 @@ from jose import jwt, JWTError
 from app.db.session import SessionLocal
 from app.db import models
 from app.core.config import config
+from app.db.models import User, Team, UserTeam, SvgIcon, Connection, Model, KnowledgeBase, VectorDBConfig
+from fastapi import Path
 
 SECRET_KEY = config.jwt['secret_key']
 ALGORITHM = config.jwt['algorithm']
@@ -34,3 +36,40 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user 
+
+def get_current_active_superuser(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=403, detail="The user doesn't have enough privileges"
+        )
+    return current_user
+
+def get_vdb_or_404(
+    vdb_id: int = Path(..., description="向量数据库ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> VectorDBConfig:
+    """
+    获取向量数据库实例，如果不存在或无权限则抛出404/403异常
+    """
+    vdb = db.query(VectorDBConfig).filter(VectorDBConfig.id == vdb_id).first()
+    if not vdb:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="向量数据库不存在")
+
+    # 超级管理员直接放行
+    if current_user.is_superuser:
+        vdb.current_user_role = 'admin'  # 赋予超管admin角色权限
+        return vdb
+
+    # 检查用户是否属于该VDB的团队
+    user_team_link = db.query(UserTeam).filter_by(
+        user_id=current_user.id,
+        team_id=vdb.team_id
+    ).first()
+
+    if not user_team_link:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问该向量数据库")
+
+    # 将用户在团队的角色附加到vdb对象上，方便后续使用
+    vdb.current_user_role = user_team_link.role
+    return vdb 

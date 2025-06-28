@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { post } from "@/lib/request";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
-async function createCollection(data: { name: string; description?: string; vdb_id: number }) {
+async function createCollection(data: { name: string; description?: string; vdb_id: number; team_id: number }) {
   return post(`/collection`, data);
 }
 
@@ -18,12 +18,13 @@ async function testCollectionConnection(vdb_id: number) {
 
 interface CollectionFormProps {
   vdbId: number;
+  teamId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
 }
 
-export default function CollectionForm({ vdbId, open, onOpenChange, onCreated }: CollectionFormProps) {
+export default function CollectionForm({ vdbId, teamId, open, onOpenChange, onCreated }: CollectionFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [testing, setTesting] = useState(false);
@@ -55,7 +56,7 @@ export default function CollectionForm({ vdbId, open, onOpenChange, onCreated }:
     setCreating(true);
     setError("");
     try {
-      const res = await createCollection({ name, description, vdb_id: vdbId });
+      const res = await createCollection({ name, description, vdb_id: vdbId, team_id: Number(teamId) });
       if (res.code === 200) {
         onOpenChange(false);
         setName("");

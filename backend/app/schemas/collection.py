@@ -7,8 +7,11 @@ class CollectionBase(BaseModel):
     name: str
     description: Optional[str] = None
 
-class CollectionCreate(CollectionBase):
+class CollectionCreate(BaseModel):
+    name: str
     vdb_id: int
+    team_id: int
+    description: Optional[str] = None
 
 class CollectionOut(CollectionBase):
     id: int
@@ -19,4 +22,8 @@ class CollectionOut(CollectionBase):
     updated_at: datetime
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+class CollectionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None 

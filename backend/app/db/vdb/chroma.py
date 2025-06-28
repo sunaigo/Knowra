@@ -34,8 +34,6 @@ class ChromaVectorDB(BaseVectorDB):
     def check_permission(self, user_team_id: int) -> bool:
         if self.config.is_private:
             return user_team_id == self.team_id
-        if self.config.allowed_team_ids:
-            return user_team_id in self.config.allowed_team_ids
         return True
 
     async def get_statistics(self) -> Dict[str, Any]:

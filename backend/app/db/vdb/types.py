@@ -16,7 +16,6 @@ class VectorDBConfig:
     description: Optional[str] = None
     connection_config: Dict[str, Any] = None
     is_private: bool = True
-    allowed_team_ids: Optional[List[int]] = None
     embedding_dimension: int = 1536
     index_type: str = "hnsw"
     created_at: Optional[datetime] = None
