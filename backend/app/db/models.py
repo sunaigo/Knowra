@@ -98,6 +98,10 @@ class KnowledgeBase(Base):
     icon_name = Column(String(100), nullable=True, comment='图标名称')
     collection_id = Column(Integer, nullable=False, comment='绑定的Collection ID')  # 新增字段，必须绑定
 
+    # 新增：可选绑定 OSS 连接和 bucket
+    oss_connection_id = Column(Integer, nullable=True, comment='绑定的OSS连接ID')
+    oss_bucket = Column(String(255), nullable=True, comment='绑定的OSS bucket名称')
+
     owner = relationship(
         "User",
         primaryjoin="User.id == foreign(KnowledgeBase.owner_id)"
@@ -120,6 +124,8 @@ class Document(Base):
     filename = Column(String(255), nullable=False)
     filetype = Column(String(20))
     filepath = Column(String(255))
+    oss_connection_id = Column(Integer, nullable=True)
+    oss_bucket = Column(String(255), nullable=True)
     uploader_id = Column(Integer, index=True)
     upload_time = Column(DateTime, default=datetime.utcnow, index=True)
     status = Column(String(20), default='not_started', index=True)
@@ -315,3 +321,38 @@ class VDBShare(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # 可加唯一索引 (vdb_id, team_id) 
+
+class OSSConnection(Base):
+    __tablename__ = 'oss_connections'
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False, comment="连接名称")
+    endpoint = Column(String(255), nullable=False, comment="S3/OSS Endpoint")
+    access_key = Column(String(255), nullable=False, comment="Access Key（加密存储）")
+    secret_key = Column(String(255), nullable=False, comment="Secret Key（加密存储）")
+    region = Column(String(100), nullable=True, comment="区域")
+    description = Column(Text, comment="描述")
+    team_id = Column(Integer, nullable=False, comment="所属团队ID")
+    maintainer_id = Column(Integer, nullable=False, comment="添加人ID")
+    status = Column(String(20), default='enabled', comment="状态")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    team = relationship(
+        "Team",
+        primaryjoin="Team.id == foreign(OSSConnection.team_id)"
+    )
+    maintainer = relationship(
+        "User",
+        primaryjoin="User.id == foreign(OSSConnection.maintainer_id)"
+    )
+    shares = relationship("OSSConnectionShare", primaryjoin="OSSConnection.id == foreign(OSSConnectionShare.oss_connection_id)")
+
+class OSSConnectionShare(Base):
+    __tablename__ = 'oss_connection_share'
+    id = Column(Integer, primary_key=True, index=True)
+    oss_connection_id = Column(Integer, nullable=False, index=True, comment="OSS连接ID")
+    team_id = Column(Integer, nullable=False, index=True, comment="被分享团队ID")
+    status = Column(String(20), default='active', comment="分享状态 active/revoked")
+    bucket = Column(String, comment="被分享的bucket")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 

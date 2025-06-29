@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.api import user, knowledge_base, document, team, model, connection, icon_router, vdb, collection
+from app.api import user, knowledge_base, document, team, model, connection, icon_router, vdb, collection, oss_connection
 from app.core.log import logger
 from app.core.config import config
 from app.core.file_queue import file_queue
@@ -36,6 +36,7 @@ app.include_router(connection.router, prefix="/api")
 app.include_router(icon_router, prefix="/api")
 app.include_router(vdb.router, prefix="/api")
 app.include_router(collection.router, prefix="/api")
+app.include_router(oss_connection.router, prefix="/api")
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):

@@ -3,13 +3,15 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.core.config import config
 from app.db.session import SessionLocal
-from app.db.models import Document, DocumentStatus, KnowledgeBase, Model, Connection, Collection, VectorDBConfig
+from app.db.models import Document, DocumentStatus, KnowledgeBase, Model, Connection, Collection, VectorDBConfig, OSSConnection
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 import traceback
 from loguru import logger
 from app.langchain_utils.text_splitter import split_text, parse_pdf
 from app.langchain_utils.vector_store import add_texts_to_chroma
+from app.services.oss_connection_service import OSSUploader
+import os
 
 class DocumentProcessor:
     """
@@ -20,6 +22,7 @@ class DocumentProcessor:
 
     def _get_kb_and_chunks(self):
         db = SessionLocal()
+        tmp_file_path = None
         try:
             # 找到文档所属的知识库，并预加载 embedding_model 及其 connection
             kb = db.query(KnowledgeBase).options(
@@ -53,15 +56,51 @@ class DocumentProcessor:
         chunk_size = doc_config.get("chunk_size") or kb_config.get("chunk_size") or 1000
         overlap = doc_config.get("overlap") or kb_config.get("overlap") or 100
 
-        # 支持 PDF 文件解析
-        if self.doc.filetype == 'pdf' or self.doc.filename.lower().endswith('.pdf'):
-            text = parse_pdf(self.doc.filepath)
-        else:
-            with open(self.doc.filepath, 'r', encoding='utf-8') as f:
-                text = f.read()
-        chunks = split_text(text, chunk_size=chunk_size, chunk_overlap=overlap)
-        metadatas = [{"doc_id": self.doc.id, "kb_id": self.doc.kb_id, "chunk_id": i, "length": len(chunks[i])} for i in range(len(chunks))]
-        return kb, collection_name, vdb_config, chunks, metadatas
+        # ===== OSS 文件处理逻辑 =====
+        file_path = self.doc.filepath
+        is_tmp = False
+        if self.doc.oss_connection_id and self.doc.oss_bucket and str(self.doc.filepath).startswith('oss://'):
+            db = SessionLocal()
+            try:
+                oss_conn = db.query(OSSConnection).filter(OSSConnection.id == self.doc.oss_connection_id).first()
+                from app.core.encryption import decrypt_api_key
+                ak = decrypt_api_key(oss_conn.access_key)
+                sk = decrypt_api_key(oss_conn.secret_key)
+                uploader = OSSUploader(
+                    endpoint_url=oss_conn.endpoint,
+                    access_key=ak,
+                    secret_key=sk,
+                    region=oss_conn.region
+                )
+                oss_key = self.doc.filepath.replace(f'oss://{self.doc.oss_bucket}/', '')
+                tmp_dir = os.path.join(config.upload['dir'], '.tmp')
+                os.makedirs(tmp_dir, exist_ok=True)
+                tmp_file_path = os.path.join(tmp_dir, f"{self.doc.id}_{int(time.time())}_{os.path.basename(oss_key)}")
+                with open(tmp_file_path, 'wb') as f:
+                    uploader.s3.download_fileobj(self.doc.oss_bucket, oss_key, f)
+                file_path = tmp_file_path
+                is_tmp = True
+            finally:
+                db.close()
+        # ===== END =====
+
+        try:
+            # 支持 PDF 文件解析
+            if self.doc.filetype == 'pdf' or self.doc.filename.lower().endswith('.pdf'):
+                text = parse_pdf(file_path)
+            else:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+            chunks = split_text(text, chunk_size=chunk_size, chunk_overlap=overlap)
+            metadatas = [{"doc_id": self.doc.id, "kb_id": self.doc.kb_id, "chunk_id": i, "length": len(chunks[i])} for i in range(len(chunks))]
+            return kb, collection_name, vdb_config, chunks, metadatas
+        finally:
+            # 清理临时文件
+            if is_tmp and tmp_file_path and os.path.exists(tmp_file_path):
+                try:
+                    os.remove(tmp_file_path)
+                except Exception as e:
+                    logger.warning(f"[OSS临时文件清理失败] {tmp_file_path}: {e}")
 
     def _should_pause(self):
         db = SessionLocal()

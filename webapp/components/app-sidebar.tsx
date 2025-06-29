@@ -69,10 +69,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       {
-        title: '向量数据库',
+        title: '数据存储管理',
         url: '/vdb',
         icon: Database,
-        isActive: pathname.startsWith('/vdb'),
+        isActive: pathname.startsWith('/vdb') || pathname.startsWith('/documents'),
+        items: [
+          { title: '向量数据库', url: '/vdb', isActive: pathname.startsWith('/vdb') },
+          { title: '文件存储位置', url: '/documents', isActive: pathname.startsWith('/documents') },
+        ],
       },
       {
         title: t('sidebar.settings', '系统设置'),

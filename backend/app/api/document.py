@@ -3,7 +3,7 @@ import os
 import json
 from sqlalchemy.orm import Session
 from datetime import datetime
-from app.db.models import Document, DocumentStatus, KnowledgeBase, Collection, VectorDBConfig
+from app.db.models import Document, DocumentStatus, KnowledgeBase, Collection, VectorDBConfig, OSSConnection
 from app.core.deps import get_db, get_current_user
 from app.core.config import config
 from app.langchain_utils.vector_store import get_chroma_collection, get_embedding_model
@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from app.services.knowledge_base_service import get_kb
 from loguru import logger
+from app.services.oss_connection_service import OSSUploader
 
 router = APIRouter(prefix="/kb", tags=["document"])
 
@@ -39,16 +40,9 @@ def upload_document(
     if not kb:
         return BaseResponse(code=404, message="知识库不存在")
 
-    upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), config.upload['dir'])
-    os.makedirs(upload_dir, exist_ok=True)
     file_ext = os.path.splitext(file.filename)[1]
-    save_name = f"kb{kb_id}_{int(datetime.utcnow().timestamp())}{file_ext}"
-    save_path = os.path.join(upload_dir, save_name)
-    with open(save_path, "wb") as f:
-        f.write(file.file.read())
-
+    save_name = f"{int(datetime.utcnow().timestamp())}{file_ext}"
     doc_status = 'pending' if kb.auto_process_on_upload else 'not_started'
-    
     config_dict = None
     if parsing_config:
         try:
@@ -56,20 +50,61 @@ def upload_document(
         except json.JSONDecodeError:
             return BaseResponse(code=400, message="Invalid JSON in parsing_config")
 
-    try:
+    # 判断是否绑定 OSS
+    if kb.oss_connection_id and kb.oss_bucket:
+        oss_conn = db.query(OSSConnection).filter(OSSConnection.id == kb.oss_connection_id).first()
+        if not oss_conn:
+            return BaseResponse(code=400, message="OSS 连接不存在")
+        # 解密 access_key/secret_key
+        from app.core.encryption import decrypt_api_key
+        ak = decrypt_api_key(oss_conn.access_key)
+        sk = decrypt_api_key(oss_conn.secret_key)
+        uploader = OSSUploader(
+            endpoint_url=oss_conn.endpoint,
+            access_key=ak,
+            secret_key=sk,
+            region=oss_conn.region
+        )
+        # 上传到 OSS
+        file.file.seek(0)
+        oss_key = f"{kb_id}/{save_name}"
+        try:
+            uploader.upload_fileobj(file.file, kb.oss_bucket, oss_key)
+        except Exception as e:
+            return BaseResponse(code=500, message=f"OSS 上传失败: {e}")
+        file_url = f"oss://{kb.oss_bucket}/{oss_key}"
+        doc = create_document(
+            db, kb_id, file.filename, file_ext[1:].lower() if file_ext else '',
+            file_url, current_user.id, parsing_config=config_dict, status=doc_status,
+            oss_connection_id=kb.oss_connection_id, oss_bucket=kb.oss_bucket
+        )
+        storage_type = 'oss'
+    else:
+        # 本地上传
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), config.upload['dir'])
+        kb_dir = os.path.join(upload_dir, str(kb_id))
+        os.makedirs(kb_dir, exist_ok=True)
+        save_path = os.path.join(kb_dir, save_name)
+        file.file.seek(0)
+        with open(save_path, "wb") as f:
+            f.write(file.file.read())
+        file_url = f"/static/uploads/{kb_id}/{save_name}"
         doc = create_document(
             db, kb_id, file.filename, file_ext[1:].lower() if file_ext else '',
             save_path, current_user.id, parsing_config=config_dict, status=doc_status
         )
-        
-        if doc.status == 'pending':
-            add_file_to_queue(doc.id)
-        
-        return BaseResponse(code=200, data={"id": doc.id, "filename": doc.filename, "status": doc.status})
-    except Exception as e:
-        if "未绑定 Collection" in str(e):
-            return BaseResponse(code=400, data=None, message="知识库未绑定 Collection，禁止上传/解析文档")
-        raise
+        storage_type = 'local'
+
+    if doc.status == 'pending':
+        add_file_to_queue(doc.id)
+
+    return BaseResponse(code=200, data={
+        "id": doc.id,
+        "filename": doc.filename,
+        "status": doc.status,
+        "storage_type": storage_type,
+        "file_url": file_url
+    })
 
 @router.get("/{kb_id}/documents", response_model=BaseResponse)
 def list_documents(kb_id: int, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):

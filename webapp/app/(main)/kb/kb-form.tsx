@@ -28,6 +28,8 @@ const formSchema = z.object({
   embedding_model_id: z.coerce.number().optional().nullable(),
   icon_name: z.string().optional(),
   collection_id: z.coerce.number({ required_error: "必须选择一个 Collection" }).nullable(),
+  oss_connection_id: z.coerce.number().optional().nullable(),
+  oss_bucket: z.string().optional().nullable(),
 })
 
 export type KnowledgeBaseFormValues = z.infer<typeof formSchema>;
@@ -64,6 +66,8 @@ export function KnowledgeBaseForm({
       embedding_model_id: initialData?.embedding_model_id ?? null,
       icon_name: initialData?.icon_name || "DocumentDuplicateIcon",
       collection_id: initialData?.collection_id ?? null,
+      oss_connection_id: initialData?.oss_connection_id ?? null,
+      oss_bucket: initialData?.oss_bucket ?? null,
     },
   })
 
@@ -164,6 +168,91 @@ export function KnowledgeBaseForm({
     fetchVdbIdByCollection()
   }, [initialData?.collection_id])
 
+  // 合并 OSS 连接和 bucket 下拉
+  const [ossConnections, setOssConnections] = React.useState<any[]>([])
+  const [ossBucketsMap, setOssBucketsMap] = React.useState<Record<number, string[]>>({})
+  const [ossLoading, setOssLoading] = React.useState(false)
+  const [ossSelectValue, setOssSelectValue] = React.useState<string>("")
+
+  // 拉取 OSS 连接及其 bucket
+  useEffect(() => {
+    async function fetchOssConnectionsAndBuckets() {
+      if (!activeTeamId) return
+      setOssLoading(true)
+      try {
+        const res = await get(`/oss-connection?team_id=${activeTeamId}`)
+        if (res && Array.isArray(res.data)) {
+          setOssConnections(res.data)
+          // 拉取每个连接的 bucket
+          const bucketsMap: Record<number, string[]> = {}
+          await Promise.all(res.data.map(async (conn: any) => {
+            try {
+              const bRes = await get(`/oss-connection/${conn.id}/buckets`)
+              if (bRes && bRes.data) {
+                if (Array.isArray(bRes.data)) {
+                  bucketsMap[conn.id] = bRes.data
+                } else {
+                  bucketsMap[conn.id] = bRes.data.buckets || []
+                }
+              }
+            } catch {}
+          }))
+          setOssBucketsMap(bucketsMap)
+        }
+      } catch {}
+      setOssLoading(false)
+    }
+    fetchOssConnectionsAndBuckets()
+  }, [activeTeamId])
+
+  // OSS 下拉数据加载完后再回显
+  useEffect(() => {
+    if (ossConnections.length === 0 || Object.keys(ossBucketsMap).length === 0) return;
+    if (initialData?.oss_connection_id && initialData?.oss_bucket) {
+      setOssSelectValue(`${initialData.oss_connection_id}::${initialData.oss_bucket}`);
+    } else {
+      setOssSelectValue('local');
+    }
+  }, [ossConnections, ossBucketsMap, initialData?.oss_connection_id, initialData?.oss_bucket]);
+
+  // 用本地 state 追踪 collection_id，确保 OSS 反显
+  const [currentCollectionId, setCurrentCollectionId] = useState<number | null>(initialData?.collection_id ?? null)
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'collection_id') {
+        setCurrentCollectionId(value.collection_id ?? null)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [form])
+
+  useEffect(() => {
+    if (!currentCollectionId) {
+      form.setValue('oss_connection_id', null)
+      form.setValue('oss_bucket', null)
+      setOssSelectValue('local')
+      return
+    }
+    let ignore = false
+    async function fetchCollectionDetailAndSetOSS() {
+      const response = await get(`/collection/${currentCollectionId}`)
+      if (response && response.code === 200 && response.data) {
+        if (response.data.oss_connection_id && response.data.oss_bucket) {
+          form.setValue('oss_connection_id', response.data.oss_connection_id)
+          form.setValue('oss_bucket', response.data.oss_bucket)
+          setOssSelectValue(`${response.data.oss_connection_id}::${response.data.oss_bucket}`)
+        } else {
+          form.setValue('oss_connection_id', null)
+          form.setValue('oss_bucket', null)
+          setOssSelectValue('local')
+        }
+      }
+    }
+    fetchCollectionDetailAndSetOSS()
+    return () => { ignore = true }
+  }, [currentCollectionId])
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -258,7 +347,7 @@ export function KnowledgeBaseForm({
               name="embedding_model_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Embedding 模型</FormLabel>
+                  <FormLabel>向量模型</FormLabel>
                   <Select
                     value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                     onValueChange={val => field.onChange(val ? Number(val) : null)}
@@ -291,7 +380,7 @@ export function KnowledgeBaseForm({
               name="collection_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>绑定 Collection</FormLabel>
+                  <FormLabel>向量库</FormLabel>
                   <Select
                     value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                     onValueChange={val => {
@@ -327,6 +416,54 @@ export function KnowledgeBaseForm({
                     </SelectContent>
                   </Select>
                   <FormDescription>请选择知识库要绑定的 Collection。</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {/* 合并 OSS 连接和 bucket 下拉 */}
+            <FormField
+              control={form.control}
+              name="oss_connection_id"
+              render={() => (
+                <FormItem>
+                  <FormLabel>OSS 存储位置</FormLabel>
+                  <Select
+                    value={ossSelectValue}
+                    onValueChange={val => {
+                      setOssSelectValue(val)
+                      if (val === 'local') {
+                        form.setValue('oss_connection_id', null)
+                        form.setValue('oss_bucket', null)
+                      } else {
+                        const [cid, bucket] = val.split('::')
+                        form.setValue('oss_connection_id', Number(cid))
+                        form.setValue('oss_bucket', bucket)
+                      }
+                    }}
+                    disabled={ossLoading || ossConnections.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={ossLoading ? "加载中..." : "请选择 OSS 存储位置（可选）"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="local">本地服务器（默认）</SelectItem>
+                      {ossConnections.length > 0 && Object.keys(ossBucketsMap).length > 0 ? (
+                        ossConnections.map((conn: any) => (
+                          <SelectGroup key={conn.id}>
+                            <SelectLabel>{conn.name}</SelectLabel>
+                            {(ossBucketsMap[conn.id] || []).map((b: string) => (
+                              <SelectItem key={b} value={`${conn.id}::${b}`}>{b}</SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))
+                      ) : (
+                        <div className="px-2 py-2 text-muted-foreground">暂无可用 OSS 连接</div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>如未选择，文件将存储在本地服务器。</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

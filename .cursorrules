@@ -7,4 +7,4 @@ Python 后端、Next.js 15、React 19、Tailwind CSS、shadcn/ui 和 Zustand 状
 
 遇到前端问题可以随时使用playwright mcp工具查看前端情况，遇到拿不定开源库及时使用context7 mcp工具查看开源库文档。
 数据库设计不要使用外键，如需修改表结构请使用sqlite命令
-数据库暂时使用的是sqlite，数据库文件位于 backend/knowra,xb
+数据库暂时使用的是sqlite，数据库文件位于 backend/knowra.db

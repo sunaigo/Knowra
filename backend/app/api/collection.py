@@ -232,6 +232,9 @@ def get_collection(collection_id: int, db: Session = Depends(get_db), current_us
     if not collection:
         return BaseResponse(code=404, message="未找到对应 Collection")
     vdb = db.query(VectorDBConfig).filter(VectorDBConfig.id == collection.vdb_id).first()
+    # 查找是否有知识库绑定该 collection
+    from app.db.models import KnowledgeBase
+    kb = db.query(KnowledgeBase).filter(KnowledgeBase.collection_id == collection_id).first()
     data = {
         "id": collection.id,
         "name": collection.name,
@@ -242,5 +245,8 @@ def get_collection(collection_id: int, db: Session = Depends(get_db), current_us
         "created_at": collection.created_at,
         "updated_at": collection.updated_at,
         "vdb_name": vdb.name if vdb else None,
+        "kb_id": kb.id if kb else None,
+        "oss_connection_id": kb.oss_connection_id if kb else None,
+        "oss_bucket": kb.oss_bucket if kb else None,
     }
     return BaseResponse(code=200, data=data, message="success") 

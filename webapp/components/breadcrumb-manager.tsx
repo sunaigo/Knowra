@@ -81,9 +81,15 @@ export function BreadcrumbManager() {
           continue
         }
 
+        // Bucket 路径特殊处理：/documents/bucket/[oss_id]
+        if (pathSegments[i - 2] === "documents" && pathSegments[i - 1] === "bucket") {
+          currentPath += `/${segment}`
+          newBreadcrumbs.push({ href: currentPath, label: "Bucket 列表" })
+          break // bucket 路径后面不再有更深层级，直接结束
+        }
+
         // Manually construct the path to handle the skipped 'documents' segment
         if (prevSegment === "documents") {
-          // currentPath is /kb/1, we need to add /documents/[doc_id]
           currentPath += `/documents/${segment}`
         } else {
           currentPath += `/${segment}`
@@ -94,7 +100,12 @@ export function BreadcrumbManager() {
         if (prevSegment === "kb" && segment !== "create") {
           label = await fetchKnowledgeBaseName(segment)
         } else if (prevSegment === "documents" && segment !== "upload") {
-          label = await fetchDocumentName(segment)
+          // 只在不是 bucket 路径且 segment 是数字时才请求文档名
+          if (pathSegments[i - 1] === "bucket") {
+            // 不请求文档名
+          } else if (/^\d+$/.test(segment)) {
+            label = await fetchDocumentName(segment)
+          }
         }
 
         newBreadcrumbs.push({ href: currentPath, label })

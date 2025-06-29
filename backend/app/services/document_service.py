@@ -5,7 +5,7 @@ from datetime import datetime
 from app.services.knowledge_base_service import get_kb
 
 # 创建文档
-def create_document(db: Session, kb_id: int, filename: str, filetype: str, filepath: str, uploader_id: int, parsing_config: Optional[Dict[str, Any]] = None, status: Optional[str] = None) -> Document:
+def create_document(db: Session, kb_id: int, filename: str, filetype: str, filepath: str, uploader_id: int, parsing_config: Optional[Dict[str, Any]] = None, status: Optional[str] = None, oss_connection_id: Optional[int] = None, oss_bucket: Optional[str] = None) -> Document:
     # 校验知识库是否绑定 collection
     kb = get_kb(db, kb_id)
     if not kb or not kb.collection_id:
@@ -21,7 +21,9 @@ def create_document(db: Session, kb_id: int, filename: str, filetype: str, filep
         status=status or DocumentStatus.PENDING,
         meta="",
         fail_reason="",
-        parsing_config=parsing_config
+        parsing_config=parsing_config,
+        oss_connection_id=oss_connection_id,
+        oss_bucket=oss_bucket
     )
     db.add(doc)
     db.commit()

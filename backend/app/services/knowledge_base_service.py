@@ -13,7 +13,9 @@ def create_kb(db: Session, kb_in: KnowledgeBaseCreate, owner_id: int):
         embedding_model_id=kb_in.embedding_model_id,
         team_id=kb_in.team_id,
         icon_name=kb_in.icon_name,
-        collection_id=kb_in.collection_id
+        collection_id=kb_in.collection_id,
+        oss_connection_id=kb_in.oss_connection_id,
+        oss_bucket=kb_in.oss_bucket
     )
     db.add(kb)
     db.commit()

@@ -9,11 +9,17 @@ class KnowledgeBaseBase(BaseModel):
     description: Optional[str] = None
     team_id: int
     collection_id: int  # 新增，必须绑定
+    # 新增，可选 OSS 绑定
+    oss_connection_id: Optional[int] = None
+    oss_bucket: Optional[str] = None
 
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     auto_process_on_upload: Optional[bool] = True
     embedding_model_id: Optional[int] = None
     icon_name: Optional[str] = None
+    # 新增，可选 OSS 绑定
+    oss_connection_id: Optional[int] = None
+    oss_bucket: Optional[str] = None
 
 class KnowledgeBaseUpdate(BaseModel):
     name: Optional[str] = None
@@ -24,6 +30,9 @@ class KnowledgeBaseUpdate(BaseModel):
     embedding_model_id: Optional[int] = None
     icon_name: Optional[str] = None
     collection_id: Optional[int] = None  # 可选，编辑时可变
+    # 新增，可选 OSS 绑定
+    oss_connection_id: Optional[int] = None
+    oss_bucket: Optional[str] = None
 
 class KnowledgeBaseOut(KnowledgeBaseBase):
     id: int
@@ -39,6 +48,9 @@ class KnowledgeBaseOut(KnowledgeBaseBase):
     embedding_model: Optional[ModelOut] = None
     icon_name: Optional[str] = None
     collection_id: int  # 新增
+    # 新增，可选 OSS 绑定
+    oss_connection_id: Optional[int] = None
+    oss_bucket: Optional[str] = None
     class Config:
         from_attributes = True  # pydantic v2写法，替代orm_mode 
 
