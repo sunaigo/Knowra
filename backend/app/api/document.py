@@ -19,10 +19,12 @@ from app.services.document_service import (
 )
 from app.core.file_queue import add_file_to_queue
 from pydantic import BaseModel
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from app.services.knowledge_base_service import get_kb
 from loguru import logger
 from app.services.oss_connection_service import OSSUploader
+from app.core.encryption import decrypt_api_key
+import urllib.parse
 
 router = APIRouter(prefix="/kb", tags=["document"])
 
@@ -56,7 +58,6 @@ def upload_document(
         if not oss_conn:
             return BaseResponse(code=400, message="OSS 连接不存在")
         # 解密 access_key/secret_key
-        from app.core.encryption import decrypt_api_key
         ak = decrypt_api_key(oss_conn.access_key)
         sk = decrypt_api_key(oss_conn.secret_key)
         uploader = OSSUploader(
@@ -67,7 +68,7 @@ def upload_document(
         )
         # 上传到 OSS
         file.file.seek(0)
-        oss_key = f"{kb_id}/{save_name}"
+        oss_key = save_name  # 直接用唯一文件名，不再拼接kb_id
         try:
             uploader.upload_fileobj(file.file, kb.oss_bucket, oss_key)
         except Exception as e:
@@ -237,7 +238,26 @@ def preview_txt_document(doc_id: int, offset: int = Query(0, ge=0), db: Session 
     actual_lines = 0
     has_more = False
     try:
-        with open(doc.filepath, 'r', encoding='utf-8') as f:
+        # 判断是否为 OSS 文件（需全部条件满足）
+        is_oss = bool(doc.oss_connection_id and doc.oss_bucket and str(doc.filepath).startswith('oss://'))
+        if is_oss:
+            oss_conn = db.query(OSSConnection).filter(OSSConnection.id == doc.oss_connection_id).first()
+            ak = decrypt_api_key(oss_conn.access_key)
+            sk = decrypt_api_key(oss_conn.secret_key)
+            uploader = OSSUploader(
+                endpoint_url=oss_conn.endpoint,
+                access_key=ak,
+                secret_key=sk,
+                region=oss_conn.region
+            )
+            # 直接用数据库存储的key，不再拼接kb_id
+            oss_key = doc.filepath.replace(f'oss://{doc.oss_bucket}/', '')
+            import io
+            response = uploader.s3.get_object(Bucket=doc.oss_bucket, Key=oss_key)
+            f = io.StringIO(response['Body'].read().decode('utf-8'))
+        else:
+            f = open(doc.filepath, 'r', encoding='utf-8')
+        with f:
             for _ in range(offset):
                 if f.readline() == '':
                     break
@@ -344,9 +364,29 @@ def list_document_chunks(doc_id: int, page: int = Query(1, ge=1), limit: int = Q
 @router.get("/documents/{doc_id}/download")
 def download_document_file(doc_id: int, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
     doc = get_document_service(db, doc_id)
-    if not doc or not doc.filepath or not os.path.exists(doc.filepath):
+    is_oss = bool(doc and doc.oss_connection_id and doc.oss_bucket and str(doc.filepath).startswith('oss://'))
+    if not doc or not doc.filepath or (not is_oss and not os.path.exists(doc.filepath)):
         raise HTTPException(status_code=404, detail="文件不存在或已丢失")
-    return FileResponse(path=doc.filepath, filename=doc.filename, media_type='application/octet-stream')
+    if is_oss:
+        oss_conn = db.query(OSSConnection).filter(OSSConnection.id == doc.oss_connection_id).first()
+        ak = decrypt_api_key(oss_conn.access_key)
+        sk = decrypt_api_key(oss_conn.secret_key)
+        uploader = OSSUploader(
+            endpoint_url=oss_conn.endpoint,
+            access_key=ak,
+            secret_key=sk,
+            region=oss_conn.region
+        )
+        # 直接用数据库存储的key，不再拼接kb_id
+        oss_key = doc.filepath.replace(f'oss://{doc.oss_bucket}/', '')
+        response = uploader.s3.get_object(Bucket=doc.oss_bucket, Key=oss_key)
+        oss_filename = os.path.basename(oss_key)
+        content_disposition = f'attachment; filename="{oss_filename}"'
+        return StreamingResponse(response['Body'], media_type='application/octet-stream', headers={
+            'Content-Disposition': content_disposition
+        })
+    else:
+        return FileResponse(path=doc.filepath, filename=doc.filename, media_type='application/octet-stream')
 
 class TeamAddUserRequest(BaseModel):
     team_id: int
