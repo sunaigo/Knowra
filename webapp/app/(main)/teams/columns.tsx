@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { put, del } from "@/lib/request"
 import { toast } from "sonner"
 import { DialogClose } from "@/components/ui/dialog"
+import { TeamIcon } from "@/components/team-icon"
 
 export const columns: ColumnDef<TeamWithRole>[] = [
   {
@@ -29,11 +30,17 @@ export const columns: ColumnDef<TeamWithRole>[] = [
     header: "团队名称",
     cell: ({ row }) => {
       const team = row.original
+      
       return (
         <Link 
           href={`/teams/${team.id}`}
-          className="font-medium hover:underline"
+          className="font-medium hover:underline flex items-center"
         >
+          {team.icon_name && (
+            <div className="mr-2">
+              <TeamIcon team={team} size="sm" showBackground={false} />
+            </div>
+          )}
           {team.name}
         </Link>
       )

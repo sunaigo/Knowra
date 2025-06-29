@@ -19,14 +19,18 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { post, put } from "@/lib/request"
 import { toast } from "sonner"
+import { SvgIconPicker } from "@/components/svg-icon-picker"
 
 interface TeamFormProps {
   mode: "create" | "edit"
   defaultValues?: Partial<TeamCreate>
   teamId?: number
+  onSuccess?: () => void
+  onCancel?: () => void
+  showCancelButton?: boolean
 }
 
-export function TeamForm({ mode, defaultValues, teamId }: TeamFormProps) {
+export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, showCancelButton = true }: TeamFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -35,6 +39,7 @@ export function TeamForm({ mode, defaultValues, teamId }: TeamFormProps) {
     defaultValues: {
       name: defaultValues?.name || "",
       description: defaultValues?.description || "",
+      icon_name: defaultValues?.icon_name || "",
     },
   })
 
@@ -48,7 +53,11 @@ export function TeamForm({ mode, defaultValues, teamId }: TeamFormProps) {
       } else if (mode === "edit" && teamId) {
         await put(`/teams/${teamId}`, values)
         toast.success("团队更新成功")
-        router.push(`/teams/${teamId}`)
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.push(`/teams/${teamId}`)
+        }
       }
     } catch (error) {
       toast.error(mode === "create" ? "创建团队失败" : "更新团队失败")
@@ -61,6 +70,25 @@ export function TeamForm({ mode, defaultValues, teamId }: TeamFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="icon_name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>团队图标</FormLabel>
+              <FormControl>
+                <SvgIconPicker
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormDescription>
+                为团队选择一个图标，将在团队列表和侧边栏中显示。
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="name"
@@ -101,13 +129,21 @@ export function TeamForm({ mode, defaultValues, teamId }: TeamFormProps) {
           <Button type="submit" disabled={isLoading}>
             {isLoading ? "保存中..." : mode === "create" ? "创建团队" : "更新团队"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-          >
-            取消
-          </Button>
+          {showCancelButton && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (onCancel) {
+                  onCancel()
+                } else {
+                  router.back()
+                }
+              }}
+            >
+              取消
+            </Button>
+          )}
         </div>
       </form>
     </Form>

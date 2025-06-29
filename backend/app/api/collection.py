@@ -16,6 +16,8 @@ router = APIRouter(prefix="/collection", tags=["collection"])
 def list_collections(
     vdb_id: int = Query(...),
     team_id: int = Query(...),
+    exclude_bound: bool = Query(False, description="是否排除已绑定知识库的collection"),
+    editing_kb_id: Optional[int] = Query(None, description="编辑知识库时的ID，允许显示该知识库已绑定的collection"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -25,22 +27,34 @@ def list_collections(
     # 新逻辑：查 vdb_share
     share = db.query(VDBShare).filter(VDBShare.vdb_id == vdb_id, VDBShare.team_id == team_id).first()
     share_status = share.status if share else None
-    # 拥有者团队可见全部
-    if team_id == vdb.team_id:
-        collections = (
-            db.query(Collection, Team)
-            .join(Team, Collection.team_id == Team.id)
-            .filter(Collection.vdb_id == vdb_id)
-            .all()
-        )
-    else:
-        # 非拥有者团队：无论是否被分享，都能查到自己创建的 collection
-        collections = (
-            db.query(Collection, Team)
-            .join(Team, Collection.team_id == Team.id)
-            .filter(Collection.vdb_id == vdb_id, Collection.team_id == team_id)
-            .all()
-        )
+    # 拥有者团队也只返回本团队的 collection
+    collections = (
+        db.query(Collection, Team)
+        .join(Team, Collection.team_id == Team.id)
+        .filter(Collection.vdb_id == vdb_id, Collection.team_id == team_id)
+        .all()
+    )
+    
+    # 如果需要排除已绑定的 collection
+    if exclude_bound:
+        from app.db.models import KnowledgeBase
+        # 查询所有已绑定的 collection_id
+        bound_collection_ids = db.query(KnowledgeBase.collection_id).filter(
+            KnowledgeBase.collection_id.isnot(None)
+        ).all()
+        bound_collection_ids = [cid[0] for cid in bound_collection_ids if cid[0] is not None]
+        
+        # 如果是编辑模式，允许显示当前知识库绑定的 collection
+        if editing_kb_id:
+            current_kb = db.query(KnowledgeBase).filter(KnowledgeBase.id == editing_kb_id).first()
+            if current_kb and current_kb.collection_id:
+                # 从排除列表中移除当前知识库绑定的 collection
+                if current_kb.collection_id in bound_collection_ids:
+                    bound_collection_ids.remove(current_kb.collection_id)
+        
+        # 过滤掉已绑定的 collection
+        collections = [(c, t) for c, t in collections if c.id not in bound_collection_ids]
+    
     data = []
     for c, t in collections:
         # 状态判断
@@ -210,4 +224,23 @@ def update_collection(
         "created_at": collection.created_at,
         "updated_at": collection.updated_at,
     }
-    return BaseResponse(code=200, data=data, message="更新成功") 
+    return BaseResponse(code=200, data=data, message="更新成功")
+
+@router.get("/{collection_id}", response_model=BaseResponse)
+def get_collection(collection_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    collection = db.query(Collection).filter(Collection.id == collection_id).first()
+    if not collection:
+        return BaseResponse(code=404, message="未找到对应 Collection")
+    vdb = db.query(VectorDBConfig).filter(VectorDBConfig.id == collection.vdb_id).first()
+    data = {
+        "id": collection.id,
+        "name": collection.name,
+        "description": collection.description,
+        "vdb_id": collection.vdb_id,
+        "team_id": collection.team_id,
+        "owner_id": collection.owner_id,
+        "created_at": collection.created_at,
+        "updated_at": collection.updated_at,
+        "vdb_name": vdb.name if vdb else None,
+    }
+    return BaseResponse(code=200, data=data, message="success") 

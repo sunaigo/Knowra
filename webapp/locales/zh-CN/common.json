@@ -46,7 +46,8 @@
     "confirmReparseDescription": "该文档已使用当前配置处理过。您确定要重新解析吗？",
     "pageSize": "每页数量",
     "expandAll": "展开所有",
-    "collapseAll": "折叠所有"
+    "collapseAll": "折叠所有",
+    "retry": "重试"
   },
   "teams": {
     "title": "团队管理",
@@ -124,6 +125,8 @@
     "resumeProcessing": "继续解析",
     "settings": "修改参数",
     "error": "获取文档详情时发生错误。",
+    "documentError": "获取文档信息失败，请检查网络连接或稍后重试。",
+    "chunksError": "获取分块数据失败，可能是向量数据库连接问题。",
     "chunkId": "分块ID",
     "chunkLength": "长度",
     "reprocessStart": "已开始重新解析...",

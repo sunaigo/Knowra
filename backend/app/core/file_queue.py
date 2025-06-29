@@ -3,7 +3,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.core.config import config
 from app.db.session import SessionLocal
-from app.db.models import Document, DocumentStatus, KnowledgeBase, Model, Connection
+from app.db.models import Document, DocumentStatus, KnowledgeBase, Model, Connection, Collection, VectorDBConfig
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 import traceback
@@ -25,6 +25,24 @@ class DocumentProcessor:
             kb = db.query(KnowledgeBase).options(
                 joinedload(KnowledgeBase.embedding_model).joinedload(Model.connection)
             ).filter_by(id=self.doc.kb_id).first()
+            # 新增：获取知识库绑定的 collection 及其 VDB 配置
+            collection = None
+            collection_name = None
+            vdb_config = None
+            if kb and kb.collection_id:
+                collection = db.query(Collection).filter(Collection.id == kb.collection_id).first()
+                if collection:
+                    collection_name = collection.name
+                    vdb_config = db.query(VectorDBConfig).filter(VectorDBConfig.id == collection.vdb_id).first()
+                    logger.debug(f"[Collection] DocID={self.doc.id} 绑定Collection: id={collection.id}, name={collection.name}, vdb_id={collection.vdb_id}")
+                    if vdb_config:
+                        logger.debug(f"[VDB] DocID={self.doc.id} VDB配置: id={vdb_config.id}, name={vdb_config.name}, type={vdb_config.type}")
+                    else:
+                        logger.warning(f"[VDB] DocID={self.doc.id} collection绑定的VDB配置未找到！vdb_id={collection.vdb_id}")
+                else:
+                    logger.warning(f"[Collection] DocID={self.doc.id} collection_id={kb.collection_id} 在数据库中未找到！")
+            else:
+                logger.warning(f"[Collection] DocID={self.doc.id} 所属知识库未绑定collection！kb_id={self.doc.kb_id}")
         finally:
             db.close()
         
@@ -43,7 +61,7 @@ class DocumentProcessor:
                 text = f.read()
         chunks = split_text(text, chunk_size=chunk_size, chunk_overlap=overlap)
         metadatas = [{"doc_id": self.doc.id, "kb_id": self.doc.kb_id, "chunk_id": i, "length": len(chunks[i])} for i in range(len(chunks))]
-        return kb, chunks, metadatas
+        return kb, collection_name, vdb_config, chunks, metadatas
 
     def _should_pause(self):
         db = SessionLocal()
@@ -96,7 +114,11 @@ class DocumentProcessor:
             
             logger.info(f"[Process] DocID={self.doc.id}: Starting processing. Initial offset from DB is {self.doc.parse_offset or 0}.")
 
-            kb, chunks, metadatas = self._get_kb_and_chunks()
+            kb, collection_name, vdb_config, chunks, metadatas = self._get_kb_and_chunks()
+            if not collection_name or not vdb_config:
+                logger.error(f"[Collection] DocID={self.doc.id} 未能获取有效的Collection名称或VDB配置，终止解析！")
+                raise ValueError("知识库未绑定有效的 Collection 或 VDB 配置，无法进行解析")
+            logger.info(f"[Collection] DocID={self.doc.id} 解析将写入Collection: {collection_name} (VDB: {vdb_config.name})")
             total = len(chunks)
             db = SessionLocal()
             try:
@@ -130,8 +152,12 @@ class DocumentProcessor:
                 finally:
                     db.close()
                 return
-            from app.langchain_utils.vector_store import get_chroma_collection
+            
+            # 使用VDB工厂创建正确的向量数据库连接
+            from app.db.vdb.factory import VectorDBFactory
+            from app.db.vdb.types import VectorDBConfig as VDBPydanticConfig
             from app.core.config import config as global_config
+            import json
             
             embedder = None
             embedding_model = kb.embedding_model
@@ -171,15 +197,42 @@ class DocumentProcessor:
             if not embedder:
                 raise ValueError("无法初始化 Embedding 模型，请检查知识库或全局配置。")
 
-            db_chroma = get_chroma_collection(collection_name=f"kb_{self.doc.kb_id}", embedding_function=embedder)
+            # 创建VDB配置对象并使用工厂创建向量数据库实例
+            vdb_pydantic_config = VDBPydanticConfig(
+                name=vdb_config.name,
+                type=vdb_config.type,
+                team_id=vdb_config.team_id,
+                description=vdb_config.description,
+                connection_config=json.loads(vdb_config.connection_config),
+                is_private=vdb_config.is_private,
+                embedding_dimension=vdb_config.embedding_dimension,
+                index_type=vdb_config.index_type,
+                created_at=vdb_config.created_at,
+                updated_at=vdb_config.updated_at
+            )
+            
+            # 使用VDB工厂创建向量数据库实例
+            vdb_instance = VectorDBFactory.create_vector_db(vdb_pydantic_config, embedder)
+            
+            # 连接到向量数据库
+            import asyncio
+            connected = asyncio.run(vdb_instance.connect())
+            if not connected:
+                raise ValueError(f"无法连接到向量数据库: {vdb_config.name}")
+            
+            logger.info(f"[VDB] DocID={self.doc.id} 成功连接到向量数据库: {vdb_config.name} (类型: {vdb_config.type})")
+
+            # 使用真正的向量数据库进行操作，而不是本地ChromaDB
+            db_chroma = vdb_instance._client  # 获取底层的向量数据库客户端
+            logger.debug(f"[Collection] DocID={self.doc.id} 向量数据库客户端已初始化: {collection_name}")
 
             start_offset = self.doc.parse_offset or 0
             # 仅当从头开始处理时，才删除所有旧数据块
             if start_offset == 0:
-                logger.info(f"[Embedding] DocID={self.doc.id}: Deleting all old chunks before processing from scratch...")
+                logger.info(f"[Embedding] DocID={self.doc.id}: Deleting all old chunks before processing from scratch in collection {collection_name} ...")
                 db_chroma.delete(where={"doc_id": self.doc.id})
             else:
-                logger.info(f"[Embedding] DocID={self.doc.id}: Resuming from offset {start_offset}.")
+                logger.info(f"[Embedding] DocID={self.doc.id}: Resuming from offset {start_offset} in collection {collection_name} .")
             
             logger.info(f"[Embedding] DocID={self.doc.id}，共{total}个chunk，即将开始embedding...")
             parallel = global_config.embedding['parallel']

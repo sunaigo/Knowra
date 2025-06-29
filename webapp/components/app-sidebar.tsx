@@ -2,15 +2,7 @@
 
 import * as React from "react"
 import {
-  AudioWaveform,
   BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
   SquareTerminal,
   Users,
   Settings,
@@ -18,9 +10,9 @@ import {
   Database,
 } from "lucide-react"
 import { useTranslation } from 'react-i18next'
+import { usePathname } from 'next/navigation'
 
 import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
 import { NavUser } from "@/components/nav-user"
 import { TeamSwitcher } from "./team-switcher"
 import {
@@ -30,84 +22,73 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { useUser } from '@/stores/user-store'
+import { useUser, useKnowledgeBases } from '@/stores/user-store'
+import { KnowledgeBase } from "@/schemas/knowledge-base"
+import { TeamIcon } from "./team-icon"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { t } = useTranslation('common')
-  const data = React.useMemo(() => ({
-    user: {
-      name: "shadcn",
-      email: "m@example.com",
-      avatar: "/avatars/shadcn.jpg",
-    },
-    teams: [
-      {
-        name: "Acme Inc",
-        logo: GalleryVerticalEnd,
-        plan: t('sidebar.enterprise'),
-      },
-      {
-        name: "Acme Corp.",
-        logo: AudioWaveform,
-        plan: t('sidebar.startup'),
-      },
-      {
-        name: "Evil Corp.",
-        logo: Command,
-        plan: t('sidebar.free'),
-      },
-    ],
-    navMain: [
+  const user = useUser()
+  const knowledgeBases = useKnowledgeBases()
+  const pathname = usePathname()
+
+  const navMenuItems = React.useMemo(() => {
+    const kbItems = (knowledgeBases || []).map((kb: KnowledgeBase) => ({
+      title: kb.name,
+      url: `/kb/${kb.id}/documents`,
+      icon: () => <TeamIcon team={{ ...kb, role: 'member', description: kb.description || "", icon_name: kb.icon_name || null }} size="sm" />,
+      isActive: pathname.startsWith(`/kb/${kb.id}`),
+    }))
+
+    return [
       {
         title: t('sidebar.knowledgeBase.title'),
         url: '/kb',
-        icon: BookOpen
+        icon: BookOpen,
+        isActive: pathname.startsWith('/kb'),
+        items: kbItems,
       },
       {
         title: t('sidebar.model.title'),
-        url: '',
+        url: '/models',
         icon: SquareTerminal,
+        isActive: pathname.startsWith('/models') || pathname.startsWith('/connections'),
         items: [
-          { title: t('sidebar.model.list'), url: '/models' },
-          { title: t('sidebar.model.connections'), url: '/connections' },
+          { title: t('sidebar.model.list'), url: '/models', isActive: pathname.startsWith('/models') },
+          { title: t('sidebar.model.connections'), url: '/connections', isActive: pathname.startsWith('/connections') },
         ],
       },
       {
         title: t('sidebar.user.title'),
         url: '/users',
         icon: Users,
-        isActive: false,
+        isActive: pathname.startsWith('/users') || pathname.startsWith('/teams'),
         items: [
-          { title: t('sidebar.user.list'), url: '/users' },
-          { title: t('sidebar.user.teams'), url: '/teams' },
+          { title: t('sidebar.user.list'), url: '/users', isActive: pathname.startsWith('/users') },
+          { title: t('sidebar.user.teams'), url: '/teams', isActive: pathname.startsWith('/teams') },
         ],
       },
       {
         title: '向量数据库',
         url: '/vdb',
-        icon: Database
+        icon: Database,
+        isActive: pathname.startsWith('/vdb'),
       },
       {
         title: t('sidebar.settings', '系统设置'),
-        url: '#',
+        url: '/settings/icons',
         icon: Settings,
+        isActive: pathname.startsWith('/settings'),
         items: [
           {
             title: t('sidebar.iconManager', '图标管理'),
             url: '/settings/icons',
-            icon: Image
+            isActive: pathname.startsWith('/settings/icons'),
           },
         ],
       },
-    ],
-    projects: [
-      { name: t('sidebar.design_engineering'), url: "#", icon: Frame },
-      { name: t('sidebar.sales_marketing'), url: "#", icon: PieChart },
-      { name: t('sidebar.travel'), url: "#", icon: Map },
-    ],
-  }), [t])
-
-  const user = useUser()
+    ]
+  }, [t, knowledgeBases, pathname])
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -115,12 +96,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        <NavMain items={navMenuItems} />
       </SidebarContent>
       <SidebarFooter>
-        {user && user.username ? (
-          <NavUser user={user} />
+        {user ? (
+          <NavUser user={{ name: user.username, email: user.email || "N/A", avatar: "", username: user.username }} />
         ) : (
           <div className="flex items-center gap-2 p-2">
             <div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />

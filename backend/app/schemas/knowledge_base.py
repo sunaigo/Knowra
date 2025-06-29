@@ -8,6 +8,7 @@ class KnowledgeBaseBase(BaseModel):
     name: str
     description: Optional[str] = None
     team_id: int
+    collection_id: int  # 新增，必须绑定
 
 class KnowledgeBaseCreate(KnowledgeBaseBase):
     auto_process_on_upload: Optional[bool] = True
@@ -22,6 +23,7 @@ class KnowledgeBaseUpdate(BaseModel):
     auto_process_on_upload: Optional[bool] = None
     embedding_model_id: Optional[int] = None
     icon_name: Optional[str] = None
+    collection_id: Optional[int] = None  # 可选，编辑时可变
 
 class KnowledgeBaseOut(KnowledgeBaseBase):
     id: int
@@ -36,6 +38,7 @@ class KnowledgeBaseOut(KnowledgeBaseBase):
     embedding_model_id: Optional[int] = None
     embedding_model: Optional[ModelOut] = None
     icon_name: Optional[str] = None
+    collection_id: int  # 新增
     class Config:
         from_attributes = True  # pydantic v2写法，替代orm_mode 
 

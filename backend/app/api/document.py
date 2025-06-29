@@ -3,7 +3,7 @@ import os
 import json
 from sqlalchemy.orm import Session
 from datetime import datetime
-from app.db.models import Document, DocumentStatus
+from app.db.models import Document, DocumentStatus, KnowledgeBase, Collection, VectorDBConfig
 from app.core.deps import get_db, get_current_user
 from app.core.config import config
 from app.langchain_utils.vector_store import get_chroma_collection, get_embedding_model
@@ -56,15 +56,20 @@ def upload_document(
         except json.JSONDecodeError:
             return BaseResponse(code=400, message="Invalid JSON in parsing_config")
 
-    doc = create_document(
-        db, kb_id, file.filename, file_ext[1:].lower() if file_ext else '',
-        save_path, current_user.id, parsing_config=config_dict, status=doc_status
-    )
-    
-    if doc.status == 'pending':
-        add_file_to_queue(doc.id)
-    
-    return BaseResponse(code=200, data={"id": doc.id, "filename": doc.filename, "status": doc.status})
+    try:
+        doc = create_document(
+            db, kb_id, file.filename, file_ext[1:].lower() if file_ext else '',
+            save_path, current_user.id, parsing_config=config_dict, status=doc_status
+        )
+        
+        if doc.status == 'pending':
+            add_file_to_queue(doc.id)
+        
+        return BaseResponse(code=200, data={"id": doc.id, "filename": doc.filename, "status": doc.status})
+    except Exception as e:
+        if "未绑定 Collection" in str(e):
+            return BaseResponse(code=400, data=None, message="知识库未绑定 Collection，禁止上传/解析文档")
+        raise
 
 @router.get("/{kb_id}/documents", response_model=BaseResponse)
 def list_documents(kb_id: int, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
@@ -92,9 +97,53 @@ def delete_document(doc_id: int, db: Session = Depends(get_db), current_user: An
     try:
         if doc.filepath and os.path.exists(doc.filepath):
             os.remove(doc.filepath)
-        embedder = get_embedding_model()
-        db_chroma = get_chroma_collection(f"kb_{doc.kb_id}", embedder)
-        db_chroma.delete(where={"doc_id": doc.id})
+        
+        # 获取知识库绑定的 collection 及其 VDB 配置
+        kb = db.query(KnowledgeBase).filter(KnowledgeBase.id == doc.kb_id).first()
+        if kb and kb.collection_id:
+            collection = db.query(Collection).filter(Collection.id == kb.collection_id).first()
+            if collection:
+                vdb_config = db.query(VectorDBConfig).filter(VectorDBConfig.id == collection.vdb_id).first()
+                if vdb_config:
+                    # 使用VDB工厂创建正确的向量数据库连接
+                    from app.db.vdb.factory import VectorDBFactory
+                    from app.db.vdb.types import VectorDBConfig as VDBPydanticConfig
+                    import json
+                    import asyncio
+                    
+                    embedder = get_embedding_model()
+                    
+                    # 创建VDB配置对象并使用工厂创建向量数据库实例
+                    vdb_pydantic_config = VDBPydanticConfig(
+                        name=vdb_config.name,
+                        type=vdb_config.type,
+                        team_id=vdb_config.team_id,
+                        description=vdb_config.description,
+                        connection_config=json.loads(vdb_config.connection_config),
+                        is_private=vdb_config.is_private,
+                        embedding_dimension=vdb_config.embedding_dimension,
+                        index_type=vdb_config.index_type,
+                        created_at=vdb_config.created_at,
+                        updated_at=vdb_config.updated_at
+                    )
+                    
+                    # 使用VDB工厂创建向量数据库实例
+                    vdb_instance = VectorDBFactory.create_vector_db(vdb_pydantic_config, embedder)
+                    
+                    # 连接到向量数据库并删除文档相关数据
+                    connected = asyncio.run(vdb_instance.connect())
+                    if connected:
+                        db_chroma = vdb_instance._client
+                        db_chroma.delete(where={"doc_id": doc.id})
+                        logger.info(f"[Delete] 已从向量数据库 {vdb_config.name} 删除文档 {doc.id} 的分块数据")
+                    else:
+                        logger.warning(f"[Delete] 无法连接到向量数据库 {vdb_config.name}，跳过向量数据删除")
+                else:
+                    logger.warning(f"[Delete] 文档 {doc.id} 所属知识库的VDB配置未找到，跳过向量数据删除")
+            else:
+                logger.warning(f"[Delete] 文档 {doc.id} 所属知识库的Collection未找到，跳过向量数据删除")
+        else:
+            logger.warning(f"[Delete] 文档 {doc.id} 所属知识库未绑定Collection，跳过向量数据删除")
     except Exception as e:
         logger.warning(f"[Delete] 文件或向量库数据删除失败: {e}")
 
@@ -188,30 +237,74 @@ def list_document_chunks(doc_id: int, page: int = Query(1, ge=1), limit: int = Q
     if not doc:
         return BaseResponse(code=404, message="Document not found")
 
-    embedder = get_embedding_model()
-    db_chroma = get_chroma_collection(f"kb_{doc.kb_id}", embedder)
-    
-    all_chunks_result = db_chroma.get(where={"doc_id": doc_id}, include=["metadatas", "documents"])
-    documents = all_chunks_result.get("documents", [])
-    metadatas = all_chunks_result.get("metadatas", [])
-    if not documents:
-        return BaseResponse(code=200, data={"items": [], "total": 0, "page": page, "limit": limit})
+    # 获取知识库绑定的 collection 及其 VDB 配置
+    kb = db.query(KnowledgeBase).filter(KnowledgeBase.id == doc.kb_id).first()
+    collection_name = None
+    vdb_config = None
+    if kb and kb.collection_id:
+        collection = db.query(Collection).filter(Collection.id == kb.collection_id).first()
+        if collection:
+            collection_name = collection.name
+            vdb_config = db.query(VectorDBConfig).filter(VectorDBConfig.id == collection.vdb_id).first()
+    if not collection_name or not vdb_config:
+        return BaseResponse(code=400, message="知识库未绑定有效的 Collection 或 VDB 配置，无法查询分块")
 
-    combined = sorted(list(zip(documents, metadatas)), key=lambda item: item[1].get("chunk_id", 0))
-    total_chunks = len(combined)
-    paginated_items = combined[(page - 1) * limit : page * limit]
+    try:
+        # 使用VDB工厂创建正确的向量数据库连接
+        from app.db.vdb.factory import VectorDBFactory
+        from app.db.vdb.types import VectorDBConfig as VDBPydanticConfig
+        import json
+        
+        embedder = get_embedding_model()
+        
+        # 创建VDB配置对象并使用工厂创建向量数据库实例
+        vdb_pydantic_config = VDBPydanticConfig(
+            name=vdb_config.name,
+            type=vdb_config.type,
+            team_id=vdb_config.team_id,
+            description=vdb_config.description,
+            connection_config=json.loads(vdb_config.connection_config),
+            is_private=vdb_config.is_private,
+            embedding_dimension=vdb_config.embedding_dimension,
+            index_type=vdb_config.index_type,
+            created_at=vdb_config.created_at,
+            updated_at=vdb_config.updated_at
+        )
+        
+        # 使用VDB工厂创建向量数据库实例
+        vdb_instance = VectorDBFactory.create_vector_db(vdb_pydantic_config, embedder)
+        
+        # 连接到向量数据库
+        import asyncio
+        connected = asyncio.run(vdb_instance.connect())
+        if not connected:
+            return BaseResponse(code=500, message=f"无法连接到向量数据库: {vdb_config.name}")
+        
+        # 使用真正的向量数据库进行查询
+        db_chroma = vdb_instance._client
+        all_chunks_result = db_chroma.get(where={"doc_id": doc_id}, include=["metadatas", "documents"])
+        documents = all_chunks_result.get("documents", [])
+        metadatas = all_chunks_result.get("metadatas", [])
+        if not documents:
+            return BaseResponse(code=200, data={"items": [], "total": 0, "page": page, "limit": limit})
 
-    chunk_list = []
-    for text, meta in paginated_items:
-        chunk_data = {"chunk_id": meta.get("chunk_id"), "text": text, "total_lines": text.count('\n') + 1, "truncated": False, "length": meta.get("length", len(text))}
-        if not full_text:
-            lines = text.splitlines()
-            preview = '\n'.join(lines[:3])
-            chunk_data["text"] = preview
-            chunk_data["truncated"] = len(lines) > 3
-        chunk_list.append(chunk_data)
-    
-    return BaseResponse(code=200, data={"items": chunk_list, "total": total_chunks, "page": page, "limit": limit})
+        combined = sorted(list(zip(documents, metadatas)), key=lambda item: item[1].get("chunk_id", 0))
+        total_chunks = len(combined)
+        paginated_items = combined[(page - 1) * limit : page * limit]
+
+        chunk_list = []
+        for text, meta in paginated_items:
+            chunk_data = {"chunk_id": meta.get("chunk_id"), "text": text, "total_lines": text.count('\n') + 1, "truncated": False, "length": meta.get("length", len(text))}
+            if not full_text:
+                lines = text.splitlines()
+                preview = '\n'.join(lines[:3])
+                chunk_data["text"] = preview
+                chunk_data["truncated"] = len(lines) > 3
+            chunk_list.append(chunk_data)
+        return BaseResponse(code=200, data={"items": chunk_list, "total": total_chunks, "page": page, "limit": limit})
+    except Exception as e:
+        logger.error(f"查询分块失败: {str(e)}")
+        return BaseResponse(code=500, message=f"查询分块失败: {str(e)}")
 
 @router.get("/documents/{doc_id}/download")
 def download_document_file(doc_id: int, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):

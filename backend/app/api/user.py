@@ -73,6 +73,7 @@ def get_me(db: Session = Depends(get_db), current_user: User = Depends(get_curre
             id=assoc.team.id,
             name=assoc.team.name,
             description=assoc.team.description,
+            icon_name=assoc.team.icon_name,
             created_at=assoc.team.created_at,
             role=assoc.role,
             member_count=member_count
@@ -92,6 +93,7 @@ def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get
             id=assoc.team.id,
             name=assoc.team.name,
             description=assoc.team.description,
+            icon_name=assoc.team.icon_name,
             created_at=assoc.team.created_at,
             role=assoc.role,
             member_count=member_count

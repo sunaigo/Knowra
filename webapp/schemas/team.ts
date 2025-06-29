@@ -4,6 +4,7 @@ export const TeamSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string().nullable(),
+  icon_name: z.string().nullable(),
   created_at: z.string(),
 })
 
@@ -19,6 +20,7 @@ export const TeamDetailSchema = TeamSchema.extend({
 export const TeamCreateSchema = z.object({
   name: z.string().min(1, '团队名称不能为空'),
   description: z.string().optional(),
+  icon_name: z.string().optional(),
 })
 
 export const TeamUpdateSchema = TeamCreateSchema

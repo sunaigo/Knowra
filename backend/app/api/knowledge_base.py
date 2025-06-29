@@ -28,6 +28,9 @@ router = APIRouter(prefix="/kb", tags=["knowledge_base"])
 
 @router.post("/", response_model=BaseResponse)
 def create_knowledge_base(kb_in: KnowledgeBaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # 校验 collection_id 必须存在且有效
+    if not kb_in.collection_id or kb_in.collection_id <= 0:
+        return BaseResponse(code=400, data=None, message="必须选择并绑定一个 Collection")
     kb = create_kb(db, kb_in, owner_id=current_user.id)
     kb_out = KnowledgeBaseOut.model_validate(kb).model_dump()
     return BaseResponse(code=200, data=kb_out, message="success")
@@ -59,6 +62,9 @@ def get_knowledge_base(kb_id: int, db: Session = Depends(get_db), current_user: 
 
 @router.put("/{kb_id}", response_model=BaseResponse)
 def update_knowledge_base(kb_id: int, kb_in: KnowledgeBaseUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # 校验 collection_id（如果有传）
+    if kb_in.collection_id is not None and kb_in.collection_id <= 0:
+        return BaseResponse(code=400, data=None, message="必须选择并绑定一个 Collection")
     kb = update_kb(db, kb_id, kb_in)
     if not kb:
         return BaseResponse(code=404, data=None, message="知识库不存在")

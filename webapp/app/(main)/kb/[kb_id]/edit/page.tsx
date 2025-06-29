@@ -7,6 +7,7 @@ import { KnowledgeBaseForm, KnowledgeBaseFormValues } from "@/app/(main)/kb/kb-f
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { fetchUser } from "@/stores/user-store"
 
 const EditKBSkeleton = () => (
     <div className="w-full max-w-3xl space-y-6">
@@ -92,6 +93,9 @@ export default function KBEditPage() {
       toast.success("更新成功", {
         description: `知识库 "${values.name}" 已成功更新。`,
       })
+      
+      await fetchUser()
+
       router.push(`/kb/${kb_id}`)
       router.refresh()
     } catch (err: any) {

@@ -62,6 +62,7 @@ def get_my_teams(db: Session = Depends(get_db), current_user: User = Depends(get
             id=assoc.team.id,
             name=assoc.team.name,
             description=assoc.team.description,
+            icon_name=assoc.team.icon_name,
             created_at=assoc.team.created_at,
             role=assoc.role,
             member_count=len(assoc.team.user_associations)
@@ -112,6 +113,7 @@ def update_team(
     
     team.name = team_in.name
     team.description = team_in.description
+    team.icon_name = team_in.icon_name
     db.commit()
     db.refresh(team)
     

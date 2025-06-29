@@ -69,6 +69,7 @@ class Team(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
     description = Column(Text)
+    icon_name = Column(String(100), nullable=True, comment='图标名称')
     created_at = Column(DateTime, default=datetime.utcnow)
     user_associations = relationship(
         'UserTeam',
@@ -95,6 +96,7 @@ class KnowledgeBase(Base):
     team_id = Column(Integer, nullable=False)
     embedding_model_id = Column(Integer)
     icon_name = Column(String(100), nullable=True, comment='图标名称')
+    collection_id = Column(Integer, nullable=False, comment='绑定的Collection ID')  # 新增字段，必须绑定
 
     owner = relationship(
         "User",

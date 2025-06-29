@@ -5,6 +5,7 @@ from datetime import datetime
 class TeamBase(BaseModel):
     name: str
     description: Optional[str] = None
+    icon_name: Optional[str] = None
 
 class TeamCreate(TeamBase):
     pass

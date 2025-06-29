@@ -18,7 +18,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useRouter, useParams, usePathname } from "next/navigation"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   useTeams,
@@ -27,6 +26,7 @@ import {
   setActiveTeamId,
 } from "@/stores/user-store"
 import { TeamWithRole } from "@/schemas/team"
+import { TeamIcon } from "@/components/team-icon"
 
 function TeamSwitcherSkeleton() {
   return (
@@ -91,10 +91,6 @@ export function TeamSwitcher() {
       </SidebarMenu>
     )
   }
-  
-  if (!selectedTeam) {
-    return <TeamSwitcherSkeleton />;
-  }
 
   return (
     <SidebarMenu>
@@ -105,13 +101,7 @@ export function TeamSwitcher() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                <AvatarImage
-                  src={`https://avatar.vercel.sh/${selectedTeam.id}.png`}
-                  alt={selectedTeam.name}
-                />
-                <AvatarFallback>{selectedTeam.name.slice(0, 1).toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <TeamIcon team={selectedTeam} size="md" />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{selectedTeam.name}</span>
                 <span className="truncate text-xs text-muted-foreground">
@@ -136,13 +126,7 @@ export function TeamSwitcher() {
                 onSelect={() => handleTeamSelect(team.id.toString())}
                 className="gap-2 p-2"
               >
-                 <Avatar className="flex size-6 items-center justify-center rounded-md border">
-                    <AvatarImage
-                      src={`https://avatar.vercel.sh/${team.id}.png`}
-                      alt={team.name}
-                    />
-                    <AvatarFallback>{team.name.slice(0,1).toUpperCase()}</AvatarFallback>
-                 </Avatar>
+                <TeamIcon team={team} size="sm" />
                 <span className="truncate">{team.name}</span>
                  <Check
                   className={cn(

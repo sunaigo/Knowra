@@ -98,20 +98,26 @@ export default function DocumentChunksPage() {
   const [chunksData, setChunksData] = useState<ChunksResponse | null>(null)
   const [documentData, setDocumentData] = useState<Doc | null>(null)
   const [kbData, setKbData] = useState<KnowledgeBase | null>(null)
-  const [isLoadingChunks, setIsLoadingChunks] = useState(false)
-  const [isLoadingDocument, setIsLoadingDocument] = useState(false)
+  const [isLoadingChunks, setIsLoadingChunks] = useState(true)
+  const [isLoadingDocument, setIsLoadingDocument] = useState(true)
   const [isLoadingKb, setIsLoadingKb] = useState(false)
+  const [hasChunksError, setHasChunksError] = useState(false)
+  const [hasDocumentError, setHasDocumentError] = useState(false)
 
   const fetchChunks = useCallback(async () => {
     if (!doc_id) return
     setIsLoadingChunks(true)
+    setHasChunksError(false)
     try {
       const response = await get(`/kb/documents/${doc_id}/chunks?page=${page}&limit=${limit}`)
       if (response && response.code === 200 && response.data) {
         setChunksData(response.data)
+      } else {
+        setHasChunksError(true)
       }
     } catch (error) {
       console.error('Failed to fetch chunks:', error)
+      setHasChunksError(true)
     } finally {
       setIsLoadingChunks(false)
     }
@@ -120,13 +126,17 @@ export default function DocumentChunksPage() {
   const fetchDocument = useCallback(async () => {
     if (!doc_id) return
     setIsLoadingDocument(true)
+    setHasDocumentError(false)
     try {
       const response = await get(`/kb/documents/${doc_id}`)
       if (response && response.code === 200 && response.data) {
         setDocumentData(response.data)
+      } else {
+        setHasDocumentError(true)
       }
     } catch (error) {
       console.error('Failed to fetch document:', error)
+      setHasDocumentError(true)
     } finally {
       setIsLoadingDocument(false)
     }
@@ -269,10 +279,11 @@ export default function DocumentChunksPage() {
     return pageNumbers
   }
 
-  const isLoading = isLoadingChunks || isLoadingDocument || isLoadingKb
-  const docStatus = documentData?.status
+  const isInitialLoading = (isLoadingChunks || isLoadingDocument) && (!chunksData || !documentData)
+  
+  const hasErrors = hasChunksError || hasDocumentError
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-1/2" />
@@ -285,9 +296,20 @@ export default function DocumentChunksPage() {
     )
   }
 
-  if (!chunksData || !documentData) {
-    return <div className="text-red-500">{t("documentChunks.error")}</div>
+  if (hasErrors || !chunksData || !documentData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 space-y-4">
+        <div className="text-red-500 text-center">
+          {hasDocumentError ? t("documentChunks.documentError") : t("documentChunks.chunksError")}
+        </div>
+        <Button onClick={refreshData} variant="outline">
+          {t("common.retry")}
+        </Button>
+      </div>
+    )
   }
+
+  const docStatus = documentData?.status
 
   const allChunkIds = chunksData.items.map((chunk) => `item-${chunk.chunk_id}`)
 

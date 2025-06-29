@@ -1,29 +1,27 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import Link from "next/link"
-import { get, post, put } from "@/lib/request"
-import { TeamDetail, TeamDetailSchema, TeamMember } from "@/schemas/team"
-import { KnowledgeBase } from "@/schemas/knowledge-base"
-import { useParams } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
+import { get, post, del } from "@/lib/request"
+import { TeamMember, TeamWithRole } from "@/schemas/team"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Plus, Trash2, Pencil } from "lucide-react"
-import { InviteMemberDialog } from "@/components/invite-member-dialog"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { InviteMemberDialog } from "@/components/invite-member-dialog"
+import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { TeamIcon } from "@/components/team-icon"
 
 export default function TeamDetailPage() {
+  const router = useRouter()
   const params = useParams()
   const teamId = params.team_id as string
-  const [team, setTeam] = useState<TeamDetail | null>(null)
+
+  const [team, setTeam] = useState<TeamWithRole | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isInviteDialogOpen, setInviteDialogOpen] = useState(false)
@@ -32,37 +30,35 @@ export default function TeamDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
   const [editRole, setEditRole] = useState<string>("")
-  const [editTeamDialogOpen, setEditTeamDialogOpen] = useState(false)
-  const [editTeamName, setEditTeamName] = useState("")
-  const [editTeamDesc, setEditTeamDesc] = useState("")
 
-  const fetchTeamData = useCallback(async () => {
-    if (!teamId) return
-    setLoading(true)
-    setError(null)
+  const fetchTeamData = async () => {
     try {
-      const teamPromise = get(`/teams/${teamId}`)
-      const membersPromise = get(`/teams/${teamId}/members`)
-      
-      const [teamResponse, membersResponse] = await Promise.all([
-        teamPromise,
-        membersPromise,
-      ])
+      const teamRes = await get(`/teams/${teamId}`)
+      if (teamRes.code === 200) {
+        setTeam(teamRes.data)
+      } else {
+        throw new Error(teamRes.message || "获取团队信息失败")
+      }
 
-      setTeam(TeamDetailSchema.parse(teamResponse.data))
-      setMembers(membersResponse.data)
-
-    } catch (err) {
-      console.error("Failed to fetch team data:", err)
-      setError(err instanceof Error ? err.message : "获取团队信息失败")
+      const membersRes = await get(`/teams/${teamId}/members`)
+      if (membersRes.code === 200) {
+        setMembers(membersRes.data)
+      } else {
+        throw new Error(membersRes.message || "获取团队成员失败")
+      }
+    } catch (err: any) {
+      setError(err.message)
+      toast.error(err.message)
     } finally {
       setLoading(false)
     }
-  }, [teamId])
+  }
 
   useEffect(() => {
-    fetchTeamData()
-  }, [fetchTeamData])
+    if (teamId) {
+      fetchTeamData()
+    }
+  }, [teamId])
 
   const handleRemoveClick = (member: TeamMember) => {
     setRemovingMember(member)
@@ -72,13 +68,17 @@ export default function TeamDetailPage() {
   const handleRemoveConfirm = async () => {
     if (!removingMember) return
     try {
-      await post(`/teams/${teamId}/remove`, { user_id: removingMember.id })
-      toast.success(`已移除成员：${removingMember.username}`)
-      setRemoveDialogOpen(false)
-      setRemovingMember(null)
-      fetchTeamData()
-    } catch (err) {
-      toast.error("移除失败，请重试")
+      const res = await del(`/teams/${teamId}/members/${removingMember.id}`)
+      if (res.code === 200) {
+        toast.success("成员移除成功！")
+        setRemoveDialogOpen(false)
+        setRemovingMember(null)
+        fetchTeamData()
+      } else {
+        toast.error(res.message || "成员移除失败")
+      }
+    } catch {
+      toast.error("成员移除失败")
     }
   }
 
@@ -121,34 +121,7 @@ export default function TeamDetailPage() {
   }
 
   const handleEditTeamClick = () => {
-    if (!team) return
-    setEditTeamName(team.name)
-    setEditTeamDesc(team.description || "")
-    setEditTeamDialogOpen(true)
-  }
-
-  const handleEditTeamConfirm = async () => {
-    if (!team) return
-    if (!editTeamName.trim()) {
-      toast.error("团队名称不能为空")
-      return
-    }
-    try {
-      const res = await put(`/teams/${teamId}`, { name: editTeamName, description: editTeamDesc })
-      if (res.code === 200) {
-        toast.success("团队信息修改成功！")
-        setEditTeamDialogOpen(false)
-        fetchTeamData()
-      } else {
-        toast.error(res.message || "团队信息修改失败")
-      }
-    } catch {
-      toast.error("团队信息修改失败")
-    }
-  }
-
-  const handleEditTeamCancel = () => {
-    setEditTeamDialogOpen(false)
+    router.push(`/teams/${teamId}/edit`)
   }
 
   if (loading) {
@@ -166,11 +139,14 @@ export default function TeamDetailPage() {
   return (
     <div className="flex h-full flex-1 flex-col space-y-8 p-8">
       <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">{team.name}</h2>
-          <p className="text-muted-foreground">
-            {team.description || "该团队暂无描述。"}
-          </p>
+        <div className="flex items-center gap-4">
+          <TeamIcon team={team} size="lg" />
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">{team.name}</h2>
+            <p className="text-muted-foreground">
+              {team.description || "该团队暂无描述。"}
+            </p>
+          </div>
         </div>
         <Button size="sm" variant="outline" onClick={handleEditTeamClick}>
           <Pencil className="mr-2 h-4 w-4" />编辑
@@ -285,29 +261,6 @@ export default function TeamDetailPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={handleEditCancel}>取消</Button>
             <Button onClick={handleEditConfirm} disabled={editRole === editingMember?.role}>保存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={editTeamDialogOpen} onOpenChange={setEditTeamDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>编辑团队信息</DialogTitle>
-            <DialogDescription>可修改团队名称和描述。</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="block mb-1 font-medium">团队名称</label>
-              <Input value={editTeamName} onChange={e => setEditTeamName(e.target.value)} maxLength={32} />
-            </div>
-            <div>
-              <label className="block mb-1 font-medium">团队描述</label>
-              <Textarea value={editTeamDesc} onChange={e => setEditTeamDesc(e.target.value)} maxLength={200} rows={3} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={handleEditTeamCancel}>取消</Button>
-            <Button onClick={handleEditTeamConfirm} disabled={!editTeamName.trim()}>保存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

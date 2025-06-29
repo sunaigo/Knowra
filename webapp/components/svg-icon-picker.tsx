@@ -12,6 +12,7 @@ import { get, post } from "@/lib/request";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { SvgUploadDialog } from "@/components/svg-upload-dialog";
 import { CustomSvgIcon } from "@/components/custom-svg-icon";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 interface CustomIcon {
   name: string;
@@ -119,7 +120,13 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
           })()}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96 max-h-96 overflow-auto">
+      <PopoverContent
+        align="center"
+        sideOffset={5}
+        className="z-[100] w-96 p-4"
+        data-radix-popper-strategy="fixed"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <div className="flex items-center mb-2 gap-2">
           <Input
             placeholder="搜索图标名..."
@@ -131,34 +138,36 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
             +
           </Button>
         </div>
-        {loading ? (
-          <div className="grid grid-cols-8 gap-2">
-            {Array.from({ length: 32 }).map((_, i) => (
-              <Skeleton key={i} className="w-8 h-8" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-8 gap-2 max-h-72 overflow-y-auto">
-            {filteredIcons.map(icon => (
-              <button
-                key={icon.type + ":" + icon.name}
-                className={`min-h-[48px] w-16 flex flex-col items-center justify-center rounded border transition-all ${value === icon.name ? "border-blue-500 bg-blue-50" : "border-transparent"}`}
-                title={icon.name}
-                type="button"
-                onClick={() => {
-                  onChange(icon.name);
-                  setOpen(false);
-                }}
-              >
-                {icon.type === "custom"
-                  ? <CustomSvgIcon content={(icon as any).content} width={36} height={36} className="text-primary" />
-                  : (() => { const HeroIcon = (icon as any).Icon as React.FC<any>; return <HeroIcon className="w-8 h-8" />; })()
-                }
-              </button>
-            ))}
-            {filteredIcons.length === 0 && <div className="col-span-8 text-center text-gray-400 py-4">无匹配图标</div>}
-          </div>
-        )}
+        <div className="max-h-80 overflow-y-auto">
+          {loading ? (
+            <div className="grid grid-cols-8 gap-2">
+              {Array.from({ length: 32 }).map((_, i) => (
+                <Skeleton key={i} className="w-8 h-8" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-8 gap-2">
+              {filteredIcons.map(icon => (
+                <button
+                  key={icon.type + ":" + icon.name}
+                  className={`min-h-[48px] w-16 flex flex-col items-center justify-center rounded border transition-all ${value === icon.name ? "border-blue-500 bg-blue-50" : "border-transparent"}`}
+                  title={icon.name}
+                  type="button"
+                  onClick={() => {
+                    onChange(icon.name);
+                    setOpen(false);
+                  }}
+                >
+                  {icon.type === "custom"
+                    ? <CustomSvgIcon content={(icon as any).content} width={36} height={36} className="text-primary" />
+                    : (() => { const HeroIcon = (icon as any).Icon as React.FC<any>; return <HeroIcon className="w-8 h-8" />; })()
+                  }
+                </button>
+              ))}
+              {filteredIcons.length === 0 && <div className="col-span-8 text-center text-gray-400 py-4">无匹配图标</div>}
+            </div>
+          )}
+        </div>
         <SvgUploadDialog
           open={uploadDialogOpen}
           onOpenChange={setUploadDialogOpen}
