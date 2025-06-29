@@ -96,7 +96,6 @@ export default function TeamEditPage() {
             icon_name: teamData.icon_name || "",
           }}
           onSuccess={async () => {
-            // 强制刷新用户状态，以更新 nav 中的团队信息
             await fetchUser()
             router.push(`/teams/${team_id}`)
             router.refresh()

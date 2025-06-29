@@ -39,7 +39,7 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
     defaultValues: {
       name: defaultValues?.name || "",
       description: defaultValues?.description || "",
-      icon_name: defaultValues?.icon_name || "",
+      icon_name: defaultValues?.icon_name || "UsersIcon",
     },
   })
 

@@ -62,7 +62,7 @@ export function KnowledgeBaseForm({
       overlap: initialData?.overlap || 200,
       auto_process_on_upload: initialData?.auto_process_on_upload ?? true,
       embedding_model_id: initialData?.embedding_model_id ?? null,
-      icon_name: initialData?.icon_name || "",
+      icon_name: initialData?.icon_name || "DocumentDuplicateIcon",
       collection_id: initialData?.collection_id ?? null,
     },
   })

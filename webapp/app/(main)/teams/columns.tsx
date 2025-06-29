@@ -1,7 +1,7 @@
 "use client"
 
-import { ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Settings, Users, Trash2, Pencil } from "lucide-react"
+import { ColumnDef, TableMeta } from "@tanstack/react-table"
+import { MoreHorizontal, Settings, Users, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,16 +13,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { TeamWithRole } from "@/schemas/team"
-import { useTranslation } from "react-i18next"
 import Link from "next/link"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { put, del } from "@/lib/request"
+import { del } from "@/lib/request"
 import { toast } from "sonner"
-import { DialogClose } from "@/components/ui/dialog"
 import { TeamIcon } from "@/components/team-icon"
+
+// Augment the TanStack Table's Meta type to include our custom refresh function
+declare module "@tanstack/react-table" {
+  interface TableMeta<TData extends unknown> {
+    refresh?: () => void
+  }
+}
 
 export const columns: ColumnDef<TeamWithRole>[] = [
   {
@@ -36,12 +39,8 @@ export const columns: ColumnDef<TeamWithRole>[] = [
           href={`/teams/${team.id}`}
           className="font-medium hover:underline flex items-center"
         >
-          {team.icon_name && (
-            <div className="mr-2">
-              <TeamIcon team={team} size="sm" showBackground={false} />
-            </div>
-          )}
-          {team.name}
+          <TeamIcon team={team} size="sm" />
+          <span className="ml-2">{team.name}</span>
         </Link>
       )
     },
@@ -101,39 +100,8 @@ export const columns: ColumnDef<TeamWithRole>[] = [
       const team = row.original
       const canManage = team.role === 'owner' || team.role === 'admin'
       const canDelete = team.role === 'owner'
-      const [editDialogOpen, setEditDialogOpen] = useState(false)
-      const [editTeamName, setEditTeamName] = useState(team.name)
-      const [editTeamDesc, setEditTeamDesc] = useState(team.description || "")
-      const [saving, setSaving] = useState(false)
       const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
       const [deleting, setDeleting] = useState(false)
-
-      const handleEditClick = () => {
-        setEditTeamName(team.name)
-        setEditTeamDesc(team.description || "")
-        setEditDialogOpen(true)
-      }
-
-      const handleEditConfirm = async () => {
-        if (!editTeamName.trim()) {
-          toast.error("团队名称不能为空")
-          return
-        }
-        setSaving(true)
-        try {
-          const res = await put(`/teams/${team.id}`, { name: editTeamName, description: editTeamDesc })
-          if (res.code === 200) {
-            toast.success("团队信息修改成功！")
-            setEditDialogOpen(false)
-            if (table.options.meta?.refresh) table.options.meta.refresh()
-          } else {
-            toast.error(res.message || "团队信息修改失败")
-          }
-        } catch {
-          toast.error("团队信息修改失败")
-        }
-        setSaving(false)
-      }
 
       const handleDeleteClick = () => {
         setDeleteDialogOpen(true)
@@ -176,9 +144,11 @@ export const columns: ColumnDef<TeamWithRole>[] = [
               {canManage && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleEditClick}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    编辑团队
+                  <DropdownMenuItem asChild>
+                    <Link href={`/teams/${team.id}/edit`}>
+                      <Settings className="mr-2 h-4 w-4" />
+                      编辑团队
+                    </Link>
                   </DropdownMenuItem>
                 </>
               )}
@@ -193,28 +163,6 @@ export const columns: ColumnDef<TeamWithRole>[] = [
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>编辑团队信息</DialogTitle>
-                <DialogDescription>可修改团队名称和描述。</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="block mb-1 font-medium">团队名称</label>
-                  <Input value={editTeamName} onChange={e => setEditTeamName(e.target.value)} maxLength={32} />
-                </div>
-                <div>
-                  <label className="block mb-1 font-medium">团队描述</label>
-                  <Textarea value={editTeamDesc} onChange={e => setEditTeamDesc(e.target.value)} maxLength={200} rows={3} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setEditDialogOpen(false)}>取消</Button>
-                <Button onClick={handleEditConfirm} disabled={!editTeamName.trim() || saving}>{saving ? "保存中..." : "保存"}</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <DialogContent>
               <DialogHeader>
