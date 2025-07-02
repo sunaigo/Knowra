@@ -3,13 +3,12 @@ from typing import List, Dict, Any, Optional
 from langchain_core.vectorstores import VectorStore
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents import Document
-from .types import VDB
+from common.schemas.worker import VectorDBCollectionConfig
 
 class VectorDB(VectorStore, ABC):
-    def __init__(self, embedding_function: Embeddings, config: VDB):
+    def __init__(self, embedding_function: Embeddings, config: VectorDBCollectionConfig):
         self._embedding_function = embedding_function
         self.config = config
-        self.team_id = config.team_id
         self.db_config = config.connection_config
         self.is_connected = False
     

@@ -43,7 +43,7 @@ app.conf.update(
 )
 
 # 自动发现任务模块
-app.autodiscover_tasks(['backend.worker'])
+app.autodiscover_tasks(['worker'])
 
 if __name__ == '__main__':
     app.start() 

@@ -77,7 +77,7 @@ export default function KnowledgeBasePage() {
     setIsDocLoading(true)
     setDocsError(null)
     try {
-      const response = await get(`/kb/${kb_id}/documents`)
+      const response = await get(`/docs/${kb_id}/list`)
       if (response && response.code === 200 && Array.isArray(response.data)) {
         setDocuments(response.data)
       } else {
@@ -110,7 +110,7 @@ export default function KnowledgeBasePage() {
   const handlePause = async (doc: Document) => {
     setIsPausing(doc.id)
     try {
-      await put(`/kb/documents/${doc.id}`, { status: "paused" })
+      await post(`/docs/${doc.id}/terminate`, {})
       mutateDocuments()
     } catch (error) {
       console.error("Failed to pause document", error)
@@ -123,7 +123,7 @@ export default function KnowledgeBasePage() {
     setPopoverOpenForDoc(null)
     // 1. Reset offset to 0
     try {
-      await put(`/kb/documents/${doc.id}`, { parse_offset: 0 })
+      await put(`/docs/${doc.id}`, { parse_offset: 0 })
       mutateDocuments() // Re-fetch to confirm offset is 0
     } catch (error) {
       console.error("Failed to reset document offset", error)
@@ -142,7 +142,7 @@ export default function KnowledgeBasePage() {
     setIsProcessing(doc.id)
     setIsConfirming(false)
     try {
-      await post(`/kb/documents/${doc.id}/process`, {})
+      await post(`/docs/${doc.id}/process`, {})
       mutateDocuments()
     } catch (error) {
       console.error("Failed to process document", error)
@@ -169,7 +169,7 @@ export default function KnowledgeBasePage() {
   const handleDelete = async (id: number) => {
     setIsDeleting(true)
     try {
-      await del(`/kb/documents/${id}`)
+      await del(`/docs/${id}`)
       mutateDocuments()
     } catch (error) {
       console.error("Failed to delete document", error)

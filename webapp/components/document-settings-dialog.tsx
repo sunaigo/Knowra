@@ -65,7 +65,7 @@ export function DocumentSettingsDialog({
     };
 
     try {
-      await put(`/kb/documents/${document.id}`, payload);
+      await put(`/docs/${document.id}`, payload);
       onSuccess();
       onClose();
     } catch (err: any) {

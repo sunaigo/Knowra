@@ -144,3 +144,4 @@ psycopg2-binary
 pymilvus
 loguru
 celery[redis]
+langchain-ollama

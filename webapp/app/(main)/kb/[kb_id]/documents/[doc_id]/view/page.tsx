@@ -33,7 +33,7 @@ export default function DocumentPreviewPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await get(`/kb/documents/${doc_id}`)
+        const response = await get(`/docs/${doc_id}`)
         if (response && response.code === 200 && response.data) {
           setDocumentInfo(response.data)
         } else {
@@ -48,7 +48,7 @@ export default function DocumentPreviewPage() {
     fetchDocument()
   }, [doc_id])
 
-  const fileDownloadUrl = `/api/kb/documents/${doc_id}/download`
+  const fileDownloadUrl = `/docs/${doc_id}/download`
 
   if (isLoading) {
     return (

@@ -89,12 +89,12 @@ export async function request(
     } catch (e) {
       // Not a JSON response, do nothing
     }
-    // 401时直接跳转登录页
+    // 401时直接跳转登录页，并返回一个永不 resolve 的 Promise，防止后续代码执行
     if (res.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('activeTeamId');
       window.location.replace('/login');
-      return;
+      return new Promise(() => {}); // 永不 resolve，阻断后续处理
     }
     const err = new Error(errorDetail)
     // @ts-ignore

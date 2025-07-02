@@ -42,7 +42,7 @@ async function fetchDocumentName(id: string): Promise<string> {
     return cache.get(id)!
   }
   try {
-    const response = await get(`/kb/documents/${id}`)
+    const response = await get(`/docs/${id}`)
     const name = response.data.name
     cache.set(id, name)
     return name

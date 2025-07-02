@@ -37,6 +37,10 @@ const useUserStore = create<UserState>()(
           set({ isLoading: true })
           try {
             const response = await apiGet('/users/me')
+            if (!response) {
+              set({ user: null, teams: [], knowledgeBases: [] })
+              return;
+            }
             const validatedResponse = BaseResponseSchema.extend({
               data: UserOutSchema.nullable(),
             }).safeParse(response)

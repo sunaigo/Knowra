@@ -68,7 +68,7 @@ const fetchFullChunk = async (
   chunk_id: number
 ): Promise<Chunk> => {
   const response = await get(
-    `/kb/documents/${doc_id}/chunks?page=${chunk_id + 1}&limit=1&full_text=true`
+    `/docs/${doc_id}/chunks?page=${chunk_id + 1}&limit=1&full_text=true`
   )
   if (response.data && response.data.items && response.data.items.length > 0) {
     return response.data.items[0]
@@ -90,9 +90,9 @@ export default function DocumentChunksPage() {
   const limit = Number(searchParams.get("limit")) || 10
 
   const chunksUrl = doc_id
-    ? `/kb/documents/${doc_id}/chunks?page=${page}&limit=${limit}`
+    ? `/docs/${doc_id}/chunks?page=${page}&limit=${limit}`
     : null
-  const documentUrl = doc_id ? `/kb/documents/${doc_id}` : null
+  const documentUrl = doc_id ? `/docs/${doc_id}` : null
   const kbUrl = kb_id ? `/kb/${kb_id}` : null
 
   const [chunksData, setChunksData] = useState<ChunksResponse | null>(null)
@@ -109,7 +109,7 @@ export default function DocumentChunksPage() {
     setIsLoadingChunks(true)
     setHasChunksError(false)
     try {
-      const response = await get(`/kb/documents/${doc_id}/chunks?page=${page}&limit=${limit}`)
+      const response = await get(`/docs/${doc_id}/chunks?page=${page}&limit=${limit}`)
       if (response && response.code === 200 && response.data) {
         setChunksData(response.data)
       } else {
@@ -128,7 +128,7 @@ export default function DocumentChunksPage() {
     setIsLoadingDocument(true)
     setHasDocumentError(false)
     try {
-      const response = await get(`/kb/documents/${doc_id}`)
+      const response = await get(`/docs/${doc_id}`)
       if (response && response.code === 200 && response.data) {
         setDocumentData(response.data)
       } else {
@@ -223,7 +223,7 @@ export default function DocumentChunksPage() {
 
   const processDocument = async () => {
     try {
-      await post(`/kb/documents/${doc_id}/process`, {})
+      await post(`/docs/${doc_id}/process`, {})
       toast.success(t("documentChunks.reprocessStart", "Reprocessing started..."))
       refreshData()
     } catch (error) {

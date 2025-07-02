@@ -30,7 +30,7 @@ export default function TextViewer({ docId }: TextViewerProps) {
     setLoading(true);
     setError(null);
     try {
-      const response = await get(`/kb/documents/${docId}/preview?offset=${offset}`);
+      const response = await get(`/docs/${docId}/preview?offset=${offset}`);
       setContent(prev => (offset === 0 ? response.content : prev + response.content));
       setNextOffset(response.next_offset);
     } catch (err) {

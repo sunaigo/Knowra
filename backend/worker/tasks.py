@@ -1,148 +1,93 @@
-from celery import current_task
-from backend.worker.celery_app import app
-from backend.worker.parser import parse_file_with_progress
+import logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+from worker.celery_app import app
+from worker.parser_service import FileParserService
 import traceback
 import requests
 from typing import Optional
+from loguru import logger
+import os
+from common.schemas.worker import ParseFileTaskParams
+import redis
+
+def progress_callback(doc_id: int, status: str, current_offset: int = None):
+    """进度回调工具方法"""
+    # 主动上报到API服务
+    api_base_url = os.environ.get('API_BASE_URL', 'http://127.0.0.1:8000')
+    if doc_id:
+        try:
+            params = {
+                "parse_offset": current_offset if current_offset is not None else 0,
+                "status": status
+            }
+            requests.post(
+                f"{api_base_url}/api/docs/{doc_id}/parse_progress",
+                json=params,
+                timeout=5
+            )
+            logger.debug(f"主动上报解析进度成功: {params}")
+        except Exception as e:
+            logger.warning(f"主动上报解析进度失败: {e}")
 
 @app.task(bind=True, name='backend.worker.tasks.parse_file_task')
-def parse_file_task(self, task_id: str, file_path: str, filetype: str, 
-                   chunk_size: int, overlap: int, parse_offset: int = 0, 
-                   callback_url: Optional[str] = None, **kwargs):
+def parse_file_task(self, params: dict):
     """
     分布式文件解析任务
-    
     Args:
-        task_id: 业务任务ID
-        file_path: 文件路径
-        filetype: 文件类型
-        chunk_size: 切块大小
-        overlap: 重叠大小
-        parse_offset: 断点续传位置
-        callback_url: 回调URL（可选）
-        **kwargs: 其他参数
+        params: 任务参数，dict，需符合 ParseFileTaskParams schema
     """
-    celery_task_id = self.request.id
-    
-    def progress_callback(progress: int, status: str, current_offset: int = None):
-        """进度回调函数"""
-        # 更新Celery任务状态
-        self.update_state(
-            state='PROGRESS',
-            meta={
-                'progress': progress,
-                'status': status,
-                'current_offset': current_offset,
-                'task_id': task_id
-            }
-        )
-        
-        # 回调主后端（如果提供了回调URL）
-        if callback_url:
-            try:
-                requests.post(
-                    callback_url,
-                    json={
-                        'celery_task_id': celery_task_id,
-                        'task_id': task_id,
-                        'status': status,
-                        'progress': progress,
-                        'current_offset': current_offset
-                    },
-                    timeout=5
-                )
-            except Exception as e:
-                print(f"回调失败: {e}")
-    
+    def cb(doc_id: int, status: str, current_offset: int = None):
+        progress_callback(doc_id, status, current_offset)
+    args = ParseFileTaskParams(**params)
+    logger.info(f"[Worker] 收到解析任务: task_id={args.task_id}, params={params}")
+    # redis写入，key为doc_parse:{filename}，filename为oss文件名（带oss://...路径）
+    filename = args.file.path  # oss文件名
+    redis_key = f'doc_parse:{filename}'
+    r = redis.StrictRedis(host='127.0.0.1', port=6379, db=0)
+    r.set(redis_key, self.request.id)
     try:
-        # 任务开始
-        progress_callback(0, 'starting')
-        
-        # 执行文件解析
-        result = parse_file_with_progress(
-            task_id=task_id,
-            file_path=file_path,
-            filetype=filetype,
-            chunk_size=chunk_size,
-            overlap=overlap,
-            parse_offset=parse_offset,
-            progress_callback=progress_callback,
-            celery_task=self,  # 传递celery任务实例，用于检查撤销状态
-            **kwargs
-        )
-        
-        # 任务完成
-        progress_callback(100, 'completed')
-        
-        # 最终回调
-        if callback_url:
-            try:
-                requests.post(
-                    callback_url,
-                    json={
-                        'celery_task_id': celery_task_id,
-                        'task_id': task_id,
-                        'status': 'SUCCESS',
-                        'progress': 100,
-                        'result': result
-                    },
-                    timeout=5
-                )
-            except Exception as e:
-                print(f"完成回调失败: {e}")
-        
+        parser_service = FileParserService(progress_callback=cb)
+        result = parser_service.parse(args)
+        logger.info(f"[Worker] 解析任务完成: task_id={args.task_id}, result={result}")
         return {
             'status': 'SUCCESS',
-            'task_id': task_id,
+            'task_id': args.task_id,
             'result': result
         }
-        
     except Exception as exc:
-        # 任务失败
         error_msg = str(exc)
         error_trace = traceback.format_exc()
-        
-        progress_callback(0, 'failed')
-        
-        # 失败回调
-        if callback_url:
-            try:
-                requests.post(
-                    callback_url,
-                    json={
-                        'celery_task_id': celery_task_id,
-                        'task_id': task_id,
-                        'status': 'FAILURE',
-                        'progress': 0,
-                        'error': error_msg,
-                        'traceback': error_trace
-                    },
-                    timeout=5
-                )
-            except Exception as e:
-                print(f"失败回调失败: {e}")
-        
-        # 更新Celery任务状态
-        self.update_state(
-            state='FAILURE',
-            meta={
-                'task_id': task_id,
-                'error': error_msg,
-                'traceback': error_trace
-            }
-        )
-        
-        # 重新抛出异常
+        logger.error(f"[Worker] 解析任务失败: task_id={args.task_id}, error={error_msg}\n{error_trace}")
+        cb(args.doc_id, 'failed')
         raise
+    finally:
+        # 删除redis key
+        r.delete(redis_key)
+        logger.info(f"[Worker] 任务结束，已删除redis key: {redis_key}")
+        # 优先删除 result 里的 file_path（即 ensure_local_file 返回的本地路径）
+        local_file_path = None
+        try:
+            if 'result' in locals() and result and isinstance(result, dict):
+                local_file_path = result.get('file_path')
+        except Exception:
+            pass
+        # 兜底用 args.file.path
+        file_path = local_file_path or args.file.path
+        if file_path and not str(file_path).startswith('oss://') and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                logger.info(f"[Worker] 已自动删除解析文件: {file_path}")
+            except Exception as e:
+                logger.error(f"[Worker] 删除文件失败: {file_path}, 错误: {e}")
 
-@app.task(bind=True, name='backend.worker.tasks.pause_task')
-def pause_task(self, celery_task_id: str):
-    """暂停任务"""
-    app.control.revoke(celery_task_id, terminate=False)
-    return {'status': 'paused', 'celery_task_id': celery_task_id}
+
 
 @app.task(bind=True, name='backend.worker.tasks.terminate_task')
-def terminate_task(self, celery_task_id: str):
-    """终止任务"""
-    app.control.revoke(celery_task_id, terminate=True)
-    return {'status': 'terminated', 'celery_task_id': celery_task_id} 
+def terminate_task(self, filename: str):
+    """终止任务：删除redis中doc_parse:{filename}对应的key，filename为oss文件名"""
+    redis_key = f'doc_parse:{filename}'
+    r = redis.StrictRedis(host='127.0.0.1', port=6379, db=0)
+    deleted = r.delete(redis_key)
+    logger.info(f"[Worker] 终止任务请求，已删除redis key: {redis_key}，结果: {deleted}")
+    return {'status': 'terminated', 'filename': filename, 'deleted': bool(deleted)} 
