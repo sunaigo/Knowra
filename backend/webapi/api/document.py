@@ -408,7 +408,7 @@ def terminate_document_parse_task(doc_id: int, db: Session = Depends(get_db), cu
     doc = get_document_service(db, doc_id)
     if not doc:
         return BaseResponse(code=404, message="文档不存在")
-    filename = doc.filename
+    filename = doc.filepath  # oss文件名
     try:
         result = celery_app.send_task('backend.worker.tasks.terminate_task', args=[filename])
         return BaseResponse(code=200, data={'task_id': result.id, 'filename': filename}, message="终止请求已发送")
