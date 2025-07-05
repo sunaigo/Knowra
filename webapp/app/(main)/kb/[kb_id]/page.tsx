@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { File, PlusCircle, MoreHorizontal, Settings, PlayCircle, Eye, Trash2, Edit, Pause } from "lucide-react"
+import { File, PlusCircle, MoreHorizontal, Settings, PlayCircle, Eye, Trash2, Edit, Pause, X as XIcon } from "lucide-react"
 import * as React from "react"
 import { useTranslation } from "react-i18next"
 import { isEqual } from "lodash"
@@ -231,7 +231,7 @@ export default function KnowledgeBasePage() {
         const isButtonDisabled = isApiProcessing || isDeleting
 
         const showPauseButton = doc.status === 'processing' || doc.status === 'pending'
-        const showPlayButton = doc.status === 'not_started' || doc.status === 'failed' || doc.status === 'paused' || doc.status === 'processed'
+        const showPlayButton = ['not_started', 'failed', 'paused', 'processed', 'cancelled'].includes(doc.status)
 
         return (
           <div className="flex items-center justify-end gap-2">
@@ -261,15 +261,15 @@ export default function KnowledgeBasePage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => (showPauseButton ? handlePause(doc) : handleProcess(doc))}
-                      disabled={isButtonDisabled || (!showPauseButton && !showPlayButton)}
+                      disabled={isButtonDisabled}
                     >
-                      {showPauseButton ? <Pause className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
+                      {showPauseButton ? <XIcon className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
                       {showPauseButton
-                        ? t("documentList.tooltipPause")
+                        ? t("documentList.tooltipCancel")
                         : t("documentList.tooltipParse")}
                     </p>
                   </TooltipContent>

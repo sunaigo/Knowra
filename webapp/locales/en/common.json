@@ -58,6 +58,7 @@
     "documentsDescription": "List of documents in this knowledge base.",
     "tooltipParse": "Parse",
     "tooltipPause": "Pause parsing",
+    "tooltipCancel": "Cancel parsing",
     "tooltipProcessing": "Processing...",
     "tooltipSettings": "Settings",
     "tooltipPreview": "Preview",

@@ -384,34 +384,39 @@ def update_document_parse_progress(
     doc_id: int,
     parse_offset: int = Body(..., embed=True),
     status: str = Body(..., embed=True),
+    chunk_count: int = Body(None, embed=True),
+    fail_reason: str = Body(None, embed=True),
     db: Session = Depends(get_db)
 ):
-    if status not in [
-        DocumentStatus.NOT_STARTED,
-        DocumentStatus.PENDING,
-        DocumentStatus.PROCESSING,
-        DocumentStatus.PROCESSED,
-        DocumentStatus.FAILED,
-        DocumentStatus.PAUSED,
-    ]:
+    from common.schemas.worker import TaskState
+    
+    # 使用统一的TaskState进行验证
+    try:
+        task_state = DocumentStatus.to_task_state(status)
+        if task_state is None:
+            raise ValueError(f"Invalid status: {status}")
+    except (ValueError, AttributeError):
         raise HTTPException(status_code=400, detail="Invalid status value")
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     doc.parse_offset = parse_offset
     doc.status = status
+    if chunk_count is not None:
+        doc.chunk_count = chunk_count
+    if fail_reason is not None:
+        doc.fail_reason = fail_reason
     db.commit()
-    return {"id": doc.id, "parse_offset": doc.parse_offset, "status": doc.status}
+    return {"id": doc.id, "parse_offset": doc.parse_offset, "status": doc.status, "chunk_count": doc.chunk_count, "fail_reason": doc.fail_reason}
 
 @router.post("/{doc_id}/terminate", response_model=BaseResponse)
 def terminate_document_parse_task(doc_id: int, db: Session = Depends(get_db), current_user: Any = Depends(get_current_user)):
     doc = get_document_service(db, doc_id)
     if not doc:
         return BaseResponse(code=404, message="文档不存在")
-    filename = doc.filepath  # oss文件名
     try:
-        result = celery_app.send_task('backend.worker.tasks.terminate_task', args=[filename])
-        return BaseResponse(code=200, data={'task_id': result.id, 'filename': filename}, message="终止请求已发送")
+        result = celery_app.send_task('backend.worker.tasks.terminate_task', args=[str(doc.id)])
+        return BaseResponse(code=200, data={'task_id': result.id, 'doc_id': doc.id}, message="终止请求已发送")
     except Exception as e:
         return BaseResponse(code=500, message=f"终止任务失败: {e}")
 

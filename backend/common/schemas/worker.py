@@ -1,5 +1,21 @@
+"""Worker相关的Schema定义"""
+
+from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
+
+
+
+class TaskState(Enum):
+    """统一的任务状态枚举"""
+    NOT_STARTED = "not_started"    # 未开始
+    PENDING = "pending"            # 待处理
+    PROCESSING = "processing"      # 处理中
+    PAUSED = "paused"              # 暂停
+    PROCESSED = "processed"        # 已处理
+    FAILED = "failed"              # 失败
+    CANCELLED = "cancelled"        # 已取消
+
 
 class WorkerRegisterRequest(BaseModel):
     worker_id: str = Field(..., description="worker唯一标识")
@@ -11,7 +27,7 @@ class WorkerRegisterRequest(BaseModel):
 class WorkerStatusCallback(BaseModel):
     worker_id: str = Field(..., description="worker唯一标识")
     task_id: str = Field(..., description="任务ID")
-    status: str = Field(..., description="任务状态，如running/paused/finished/failed")
+    status: str = Field(..., description="任务状态，如processing/paused/processed/failed")
     progress: Optional[int] = Field(default=None, description="进度百分比")
     parse_offset: Optional[int] = Field(default=None, description="断点位置")
     message: Optional[str] = Field(default=None, description="附加信息")

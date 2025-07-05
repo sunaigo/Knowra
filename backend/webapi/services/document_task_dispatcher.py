@@ -102,7 +102,7 @@ def dispatch_document_parse_task(doc_id: int):
                 oss=oss_params,
                 embedding=embedding_params,
                 vdb=vdb_params,
-                parse_offset=doc.parse_offset or 0
+                parse_offset=0
             )
             try:
                 logger.info(f"[Celery] 准备分发任务到 worker，params={params}")

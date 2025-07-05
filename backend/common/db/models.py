@@ -13,6 +13,39 @@ class DocumentStatus:
     PROCESSED = 'processed'
     FAILED = 'failed'
     PAUSED = 'paused'
+    CANCELLED = 'cancelled'
+    
+    @classmethod
+    def from_task_state(cls, task_state):
+        """从TaskState转换为DocumentStatus"""
+        from common.schemas.worker import TaskState
+        
+        mapping = {
+            TaskState.NOT_STARTED: cls.NOT_STARTED,
+            TaskState.PENDING: cls.PENDING,
+            TaskState.PROCESSING: cls.PROCESSING,
+            TaskState.PAUSED: cls.PAUSED,
+            TaskState.PROCESSED: cls.PROCESSED,
+            TaskState.FAILED: cls.FAILED,
+            TaskState.CANCELLED: cls.CANCELLED,
+        }
+        return mapping.get(task_state, cls.NOT_STARTED)
+    
+    @classmethod
+    def to_task_state(cls, status):
+        """从DocumentStatus转换为TaskState"""
+        from common.schemas.worker import TaskState
+        
+        mapping = {
+            cls.NOT_STARTED: TaskState.NOT_STARTED,
+            cls.PENDING: TaskState.PENDING,
+            cls.PROCESSING: TaskState.PROCESSING,
+            cls.PAUSED: TaskState.PAUSED,
+            cls.PROCESSED: TaskState.PROCESSED,
+            cls.FAILED: TaskState.FAILED,
+            cls.CANCELLED: TaskState.CANCELLED,
+        }
+        return mapping.get(status, TaskState.NOT_STARTED)
 
 class UserRoleConst:
     ADMIN = 'admin'
