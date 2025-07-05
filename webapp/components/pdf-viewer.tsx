@@ -6,6 +6,8 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { get } from "@/lib/request";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from 'react-i18next';
+import { Button } from "@/components/ui/button";
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
 
@@ -20,6 +22,7 @@ export default function PDFViewer({ docId, filename }: PDFViewerProps) {
   const [file, setFile] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchPdf = async () => {
@@ -31,8 +34,12 @@ export default function PDFViewer({ docId, filename }: PDFViewerProps) {
           { responseType: 'blob' }
         );
         setFile(fileBlob);
-      } catch (e: any) {
-        setError(e.message || "PDF 加载失败");
+      } catch (e) {
+        if (e instanceof Error) {
+          setError(e.message || t('pdf.loadError'));
+        } else {
+          setError(t('pdf.loadError'));
+        }
       } finally {
         setLoading(false);
       }
@@ -40,14 +47,14 @@ export default function PDFViewer({ docId, filename }: PDFViewerProps) {
     if (docId) {
       fetchPdf();
     }
-  }, [docId]);
+  }, [docId, t]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
   }
 
-  function onDocumentLoadError(error: any) {
-    setError("PDF 文件解析失败，可能已损坏");
+  function onDocumentLoadError(error: Error) {
+    setError(t('pdf.parseError'));
     console.error(error);
   }
 
@@ -77,25 +84,30 @@ export default function PDFViewer({ docId, filename }: PDFViewerProps) {
           )}
           {numPages && numPages > 1 && (
             <div className="flex gap-2 mt-4 items-center">
-              <button
+              <Button
                 className="px-2 py-1 text-xs border rounded disabled:opacity-50"
                 onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
                 disabled={pageNumber <= 1}
               >
-                上一页
-              </button>
+                {t('pdf.prevPage')}
+              </Button>
               <span className="text-xs">
-                第 {pageNumber} / {numPages} 页
+                {t('pdf.pageInfo', { pageNumber, numPages })}
               </span>
-              <button
+              <Button
                 className="px-2 py-1 text-xs border rounded disabled:opacity-50"
                 onClick={() => setPageNumber((p) => Math.min(numPages, p + 1))}
                 disabled={pageNumber >= numPages}
               >
-                下一页
-              </button>
+                {t('pdf.nextPage')}
+              </Button>
             </div>
           )}
+          <span>{t('pdf.loading')}</span>
+          <span>{t('pdf.loadFailed')}</span>
+          <span>{t('pdf.noPage')}</span>
+          <Button>{t('pdf.prev')}</Button>
+          <Button>{t('pdf.next')}</Button>
         </div>
       </CardContent>
     </Card>

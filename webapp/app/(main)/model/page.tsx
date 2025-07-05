@@ -9,13 +9,12 @@ import {
 } from "@/components/ui/card"
 import { DataTable } from "@/components/ui/data-table"
 import { columns } from "./columns"
-import useSWR, { useSWRConfig } from "swr"
-import { fetcher, del } from "@/lib/request"
+import { get, del } from "@/lib/request"
 import { Model } from "@/schemas/model"
 import { Button } from "@/components/ui/button"
 import { PlusIcon } from "@radix-ui/react-icons"
 import Link from "next/link"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,16 +26,31 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { useTranslation } from 'react-i18next'
+import { PlusCircle } from "lucide-react"
 
 export default function ModelsPage() {
-  const {
-    data: response,
-    isLoading,
-    error,
-    mutate,
-  } = useSWR<{ code: number; message: string; data: Model[] }>("/models", fetcher)
+  const [models, setModels] = useState<Model[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation()
 
-  const models = response?.data || []
+  const fetchModels = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await get("/models")
+      setModels(res.data || [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('model.loadFailed'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [t])
+  useEffect(() => {
+    fetchModels()
+  }, [fetchModels])
+  const mutate = fetchModels
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deletingModelId, setDeletingModelId] = useState<number | null>(null)
@@ -50,10 +64,10 @@ export default function ModelsPage() {
     if (!deletingModelId) return
     try {
       await del(`/models/${deletingModelId}`)
-      toast.success("模型删除成功！")
+      toast.success(t('model.deleteSuccess'))
       mutate()
-    } catch (error: any) {
-      toast.error(`模型删除失败: ${error.message}`)
+    } catch (error) {
+      toast.error(t('model.deleteFailed', { error: error instanceof Error ? error.message : '' }))
     } finally {
       setShowDeleteDialog(false)
       setDeletingModelId(null)
@@ -70,20 +84,20 @@ export default function ModelsPage() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>模型</CardTitle>
-            <CardDescription>管理您的 AI 模型。</CardDescription>
+            <CardTitle>{t('model.title')}</CardTitle>
+            <CardDescription>{t('model.desc')}</CardDescription>
           </div>
           <Button asChild>
             <Link href="/models/create">
-              <PlusIcon className="mr-2 h-4 w-4" />
-              添加模型
+              <PlusCircle className="mr-2 h-4 w-4" />
+              {t('model.add')}
             </Link>
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         {error ? (
-          <p>加载失败: {error.message}</p>
+          <div className="text-center text-red-500">{t('common.loadFailed')}: {error}</div>
         ) : (
           <DataTable
             columns={memoizedColumns()}
@@ -95,14 +109,12 @@ export default function ModelsPage() {
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>您确定要删除吗？</AlertDialogTitle>
-            <AlertDialogDescription>
-              这个操作无法撤销。这将永久删除该模型。
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t('model.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('model.deleteConfirmDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>继续</AlertDialogAction>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>{t('common.continue')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

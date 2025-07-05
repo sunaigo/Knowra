@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useRouter } from "next/navigation";
 import { post } from "@/lib/request";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { useTranslation } from 'react-i18next'
 
 async function createCollection(data: { name: string; description?: string; vdb_id: number; team_id: number }) {
   return post(`/collection`, data);
@@ -32,21 +33,22 @@ export default function CollectionForm({ vdbId, teamId, open, onOpenChange, onCr
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { t } = useTranslation()
 
   const handleTest = async () => {
     setTesting(true);
     setError("");
     try {
-      const res = await testCollectionConnection(vdbId);
+      const res: any = await testCollectionConnection(vdbId);
       if (res.code === 200) {
         setTestPassed(true);
       } else {
         setTestPassed(false);
-        setError(res.message || "连接测试失败");
+        setError(res.message || t('collection.testFailed'));
       }
-    } catch (e: any) {
+    } catch (e) {
       setTestPassed(false);
-      setError(e.message || "连接测试异常");
+      setError(e instanceof Error ? e.message : t('collection.testException'));
     } finally {
       setTesting(false);
     }
@@ -56,7 +58,7 @@ export default function CollectionForm({ vdbId, teamId, open, onOpenChange, onCr
     setCreating(true);
     setError("");
     try {
-      const res = await createCollection({ name, description, vdb_id: vdbId, team_id: Number(teamId) });
+      const res: any = await createCollection({ name, description, vdb_id: vdbId, team_id: Number(teamId) });
       if (res.code === 200) {
         onOpenChange(false);
         setName("");
@@ -65,10 +67,10 @@ export default function CollectionForm({ vdbId, teamId, open, onOpenChange, onCr
         onCreated?.();
         router.refresh();
       } else {
-        setError(res.message || "创建失败");
+        setError(res.message || t('actions.createFailed'));
       }
-    } catch (e: any) {
-      setError(e.message || "创建异常");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('actions.createException'));
     } finally {
       setCreating(false);
     }
@@ -78,25 +80,25 @@ export default function CollectionForm({ vdbId, teamId, open, onOpenChange, onCr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>新建 Collection</DialogTitle>
+          <DialogTitle>{t('collection.create')}</DialogTitle>
           <DialogDescription>
-            请填写 Collection 的名称和描述，测试连接通过后可创建。
+            {t('collection.createDesc')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="名称" value={name} onChange={e => setName(e.target.value)} />
-          <Textarea placeholder="描述（可选）" value={description} onChange={e => setDescription(e.target.value)} />
+          <Input placeholder={t('collection.name')} value={name} onChange={e => setName(e.target.value)} />
+          <Textarea placeholder={t('collection.descriptionPlaceholder')} value={description} onChange={e => setDescription(e.target.value)} />
           <Button onClick={handleTest} disabled={testing || !name} variant="outline">
             {testing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {!testing && testPassed && <CheckCircle2 className="w-4 h-4 mr-2 text-green-500" />}
             {!testing && !testPassed && error && <XCircle className="w-4 h-4 mr-2 text-red-500" />}
-            {testing ? "测试中..." : testPassed ? "连接已通过" : "测试连接"}
+            {testing ? t('actions.testing') : testPassed ? t('collection.testPassed') : t('collection.test')}
           </Button>
           {error && <div className="text-red-500 text-sm">{error}</div>}
         </div>
         <DialogFooter>
           <Button onClick={handleCreate} disabled={!testPassed || creating || !name}>
-            {creating ? "创建中..." : "创建"}
+            {creating ? t('actions.creating') : t('actions.create')}
           </Button>
         </DialogFooter>
       </DialogContent>

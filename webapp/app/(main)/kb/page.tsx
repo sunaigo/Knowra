@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { CustomSvgIcon } from '@/components/custom-svg-icon';
 import * as HeroIconsSolid from "@heroicons/react/24/solid";
 import * as HeroIconsOutline from "@heroicons/react/24/outline";
+import { useTranslation } from 'react-i18next';
 
 // 定义知识库数据类型
 interface KnowledgeBase {
@@ -34,15 +35,15 @@ interface KnowledgeBase {
 const IconRenderer = ({ iconName }: { iconName: string }) => {
   const [iconContent, setIconContent] = useState<string | null>(null);
   const [isHeroIcon, setIsHeroIcon] = useState(false);
-  const [HeroIcon, setHeroIcon] = useState<any>(null);
+  const [HeroIcon, setHeroIcon] = useState<React.ComponentType<{ className?: string }> | null>(null);
   const [hasRequested, setHasRequested] = useState(false);
 
   useEffect(() => {
     if (!iconName || hasRequested) return;
 
     // 检查是否是Heroicons
-    const solidIcon = (HeroIconsSolid as any)[iconName];
-    const outlineIcon = (HeroIconsOutline as any)[iconName];
+    const solidIcon = (HeroIconsSolid as Record<string, React.ComponentType<{ className?: string }>>)[iconName];
+    const outlineIcon = (HeroIconsOutline as Record<string, React.ComponentType<{ className?: string }>>)[iconName];
     
     if (solidIcon || outlineIcon) {
       setIsHeroIcon(true);
@@ -83,7 +84,7 @@ const IconRenderer = ({ iconName }: { iconName: string }) => {
   return null;
 };
 
-const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
+const KnowledgeBaseCard = ({ kb, t }: { kb: KnowledgeBase, t: any }) => {
   const router = useRouter();
   const user = useUser();
   const teams = useTeams();
@@ -114,17 +115,17 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
     try {
       const res = await del(`/kb/${kb.id}`);
       if (res.code === 200) {
-        toast.success('知识库删除成功！');
+        toast.success(t('kb.deleteSuccess'));
         setDeleteDialogOpen(false);
         // 重新获取知识库列表而不是刷新整个页面
         if (typeof window !== 'undefined') {
           window.location.reload();
         }
       } else {
-        toast.error(res.message || '知识库删除失败');
+        toast.error(res.message || t('kb.deleteFailed'));
       }
     } catch {
-      toast.error('知识库删除失败');
+      toast.error(t('kb.deleteFailed'));
     }
     setDeleting(false);
   };
@@ -142,7 +143,7 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
               )}
               <div>
                 <CardTitle>{kb.name}</CardTitle>
-                <CardDescription>{kb.description || '暂无描述'}</CardDescription>
+                <CardDescription>{kb.description || t('kb.noDesc')}</CardDescription>
               </div>
             </div>
             <DropdownMenu>
@@ -154,32 +155,32 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => router.push(`/kb/${kb.id}`)}>
                   <FileText className="mr-2 h-4 w-4" />
-                  <span>详情</span>
+                  <span>{t('common.detail')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleEdit}>
                   <Edit className="mr-2 h-4 w-4" />
-                  <span>编辑</span>
+                  <span>{t('common.edit')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Share2 className="mr-2 h-4 w-4" />
-                  <span>分享</span>
+                  <span>{t('common.share')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className={canDelete ? "text-red-600" : "text-red-600 opacity-50 cursor-not-allowed"}
                   onClick={canDelete ? handleDeleteClick : (e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    toast.info('只有知识库拥有者或团队管理员可以删除知识库');
+                    toast.info(t('kb.deleteNoPermission'));
                   }}
                   disabled={!canDelete}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  <span>删除</span>
+                  <span>{t('common.delete')}</span>
                 </DropdownMenuItem>
                 {!canDelete && (
                   <DropdownMenuItem className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>退出</span>
+                    <span>{t('common.exit')}</span>
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -187,13 +188,13 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
           </CardHeader>
           <CardContent>
             <div className="text-sm text-muted-foreground">
-              <p>文档数: {kb.doc_count}</p>
-              <p>创建者: {kb.owner.username}</p>
+              <p>{t('kb.docCount', { count: kb.doc_count })}</p>
+              <p>{t('kb.owner', { owner: kb.owner.username })}</p>
             </div>
           </CardContent>
           <CardFooter>
             <p className="text-xs text-muted-foreground">
-              创建于 {new Date(kb.created_at).toLocaleDateString()}
+              {t('kb.createdAt', { date: new Date(kb.created_at).toLocaleDateString() })}
             </p>
           </CardFooter>
         </Card>
@@ -201,12 +202,12 @@ const KnowledgeBaseCard = ({ kb }: { kb: KnowledgeBase }) => {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除知识库</DialogTitle>
-            <DialogDescription>删除后不可恢复，确定要删除该知识库吗？</DialogDescription>
+            <DialogTitle>{t('kb.deleteConfirmTitle')}</DialogTitle>
+            <DialogDescription>{t('kb.deleteConfirmDesc')}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>取消</Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>{deleting ? '删除中...' : '确认删除'}</Button>
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>{deleting ? t('common.deleting') : t('kb.deleteConfirmButton')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -242,6 +243,7 @@ export default function KBPage() {
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function fetchKnowledgeBases() {
@@ -253,18 +255,18 @@ export default function KBPage() {
         if (response && response.code === 200 && Array.isArray(response.data)) {
           setKnowledgeBases(response.data);
         } else {
-          setError('获取知识库列表失败');
+          setError(t('kb.loadFailed'));
         }
-      } catch (err: any) {
-        setError(err.message || '获取知识库列表失败');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('kb.loadFailed'));
       } finally {
         setIsLoading(false);
       }
     }
     fetchKnowledgeBases();
-  }, [teamId]);
+  }, [teamId, t]);
   
-  if (error) return <div>加载失败: {error}</div>;
+  if (error) return <div className="text-center text-red-500">{t('common.loadFailed')}: {error}</div>;
 
   return (
     <div className="space-y-4">
@@ -272,7 +274,7 @@ export default function KBPage() {
         <Link href="/kb/create">
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" />
-            新建知识库
+            {t('kb.create')}
           </Button>
         </Link>
       </div>
@@ -281,7 +283,7 @@ export default function KBPage() {
             Array.from({ length: 3 }).map((_, i) => <KBSkeleton key={i} />)
         ) : (
             knowledgeBases?.map((kb) => (
-                <KnowledgeBaseCard kb={kb} key={kb.id} />
+                <KnowledgeBaseCard kb={kb} t={t} key={kb.id} />
             ))
         )}
       </div>

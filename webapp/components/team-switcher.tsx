@@ -27,6 +27,7 @@ import {
 } from "@/stores/user-store"
 import { TeamWithRole } from "@/schemas/team"
 import { TeamIcon } from "@/components/team-icon"
+import { useTranslation } from "react-i18next"
 
 function TeamSwitcherSkeleton() {
   return (
@@ -49,6 +50,7 @@ export function TeamSwitcher() {
   const pathname = usePathname()
   const params = useParams()
   const { isMobile } = useSidebar()
+  const { t } = useTranslation()
   
   // Zustand store state and actions
   const teams = useTeams()
@@ -84,7 +86,7 @@ export function TeamSwitcher() {
                 <Plus className="size-4 text-muted-foreground" />
               </div>
               <div className="text-left text-sm font-medium leading-tight text-muted-foreground">
-                创建团队
+                {t('teamSwitcher.createTeam')}
               </div>
             </SidebarMenuButton>
         </SidebarMenuItem>
@@ -105,7 +107,7 @@ export function TeamSwitcher() {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{selectedTeam.name}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {selectedTeam.member_count} 位成员
+                  {t('teamSwitcher.memberCount', { count: selectedTeam.member_count })}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto h-4 w-4" />
@@ -118,7 +120,7 @@ export function TeamSwitcher() {
             sideOffset={4}
           >
             <DropdownMenuLabel className="text-muted-foreground text-xs">
-              切换团队
+              {t('teamSwitcher.switchTeam')}
             </DropdownMenuLabel>
             {teams.map((team: TeamWithRole) => (
               <DropdownMenuItem
@@ -141,7 +143,7 @@ export function TeamSwitcher() {
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <Plus className="size-4" />
               </div>
-              <div className="font-medium">创建新团队</div>
+              <div className="font-medium">{t('teamSwitcher.createNewTeam')}</div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

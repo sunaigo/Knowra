@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTeams, useActiveTeamId } from '@/stores/user-store'
 import { post, get } from '@/lib/request'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 interface OssConnectionShareDialogProps {
   oss: {
@@ -19,6 +20,7 @@ interface OssConnectionShareDialogProps {
 export function OssConnectionShareDialog({ oss, onClose, onSuccess }: OssConnectionShareDialogProps) {
   const teams = useTeams()
   const activeTeamId = useActiveTeamId()
+  const { t } = useTranslation()
   // 可选团队（排除自己团队）
   const candidateTeams = useMemo(() => teams.filter(t => String(t.id) !== String(oss.team_id)), [teams, oss.team_id])
   // 已分享团队
@@ -52,11 +54,11 @@ export function OssConnectionShareDialog({ oss, onClose, onSuccess }: OssConnect
     setLoading(true)
     try {
       await post(`/oss-connection/${oss.id}/share`, { team_ids: selectedIds })
-      toast.success('分享设置已保存')
+      toast.success(t('ossShare.saveSuccess'))
       onClose()
       onSuccess?.()
-    } catch (e: any) {
-      toast.error(e?.message || '保存失败')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('ossShare.saveFailed'))
     }
     setLoading(false)
   }
@@ -65,18 +67,18 @@ export function OssConnectionShareDialog({ oss, onClose, onSuccess }: OssConnect
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>分享 OSS 连接到其他团队</DialogTitle>
+          <DialogTitle>{t('ossShare.title')}</DialogTitle>
           <DialogDescription>
-            选择要分享的团队，保存后该团队成员可访问此 OSS 连接。
+            {t('ossShare.desc')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <div className="mb-2 text-sm font-medium">选择要分享的团队</div>
+            <div className="mb-2 text-sm font-medium">{t('ossShare.selectTeam')}</div>
             <div className="flex gap-2">
               <Select value={addTeamId} onValueChange={setAddTeamId}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="选择团队" />
+                  <SelectValue placeholder={t('ossShare.selectTeamPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {candidateTeams.map(team => (
@@ -86,14 +88,14 @@ export function OssConnectionShareDialog({ oss, onClose, onSuccess }: OssConnect
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={handleAdd} disabled={!addTeamId || selectedIds.includes(Number(addTeamId))}>添加</Button>
+              <Button onClick={handleAdd} disabled={!addTeamId || selectedIds.includes(Number(addTeamId))}>{t('ossShare.add')}</Button>
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>取消</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
           <Button onClick={handleSave} disabled={loading}>
-            {loading ? '保存中...' : '保存'}
+            {loading ? t('ossShare.saving') : t('common.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

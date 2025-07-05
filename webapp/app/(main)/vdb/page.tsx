@@ -5,7 +5,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { get, del } from "@/lib/request"
 import { useRouter } from "next/navigation"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table"
+import { useTranslation } from 'react-i18next'
 
 interface VDB {
   id: number
@@ -48,7 +49,32 @@ export default function VDBPage() {
   const router = useRouter()
   const activeTeamId = useActiveTeamId()
   const teams = useTeams()
-  const { data, isLoading, error, mutate } = useSWR(activeTeamId ? `/vdb?team_id=${activeTeamId}` : null, get)
+  const [data, setData] = useState<{ data: VDB[] } | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+  const { t } = useTranslation()
+
+  const fetchVdbs = useCallback(async () => {
+    if (!activeTeamId) return
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await get(`/vdb?team_id=${activeTeamId}`)
+      setData(res)
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(t('common.unknownError')))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [activeTeamId, t])
+  useEffect(() => {
+    if (activeTeamId) {
+      fetchVdbs()
+    } else {
+      setData(null)
+    }
+  }, [activeTeamId, fetchVdbs])
+  const mutate = fetchVdbs
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [shareDialogVdb, setShareDialogVdb] = useState<VDB | null>(null)
 
@@ -56,13 +82,13 @@ export default function VDBPage() {
     setDeletingId(id)
     try {
       await del(`/vdb/${id}`)
-      toast.success("删除成功！")
+      toast.success(t('vdb.deleteSuccess'))
       mutate()
-    } catch (e: any) {
-      toast.error(e?.message || "删除失败")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('vdb.deleteFailed'))
     }
     setDeletingId(null)
-  }, [mutate])
+  }, [mutate, t])
 
   const isOwner = (vdb: VDB) => String(vdb.team_id) === String(activeTeamId)
   const isShared = (vdb: VDB) => Array.isArray(vdb.allowed_team_ids) && vdb.allowed_team_ids.includes(Number(activeTeamId)) && !isOwner(vdb)
@@ -70,38 +96,38 @@ export default function VDBPage() {
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">向量数据库管理</h2>
+        <h2 className="text-2xl font-bold">{t('vdb.title')}</h2>
         <Button asChild disabled={!activeTeamId}>
-          <Link href="/vdb/create">新建向量数据库</Link>
+          <Link href="/vdb/create">{t('vdb.create')}</Link>
         </Button>
       </div>
       {isLoading ? (
-        <div className="text-center text-muted-foreground">加载中...</div>
+        <div className="text-center text-muted-foreground">{t('common.loading')}</div>
       ) : error ? (
-        <div className="text-center text-red-500">加载失败: {error.message}</div>
+        <div className="text-center text-red-500">{t('common.loadFailed')}: {error.message}</div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>名称</TableHead>
-              <TableHead>类型</TableHead>
-              <TableHead>团队ID</TableHead>
-              <TableHead>归属</TableHead>
-              <TableHead>描述</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead>操作</TableHead>
+              <TableHead>{t('common.name')}</TableHead>
+              <TableHead>{t('vdb.type')}</TableHead>
+              <TableHead>{t('vdb.teamId')}</TableHead>
+              <TableHead>{t('vdb.ownerTeam')}</TableHead>
+              <TableHead>{t('common.description')}</TableHead>
+              <TableHead>{t('common.createdAt')}</TableHead>
+              <TableHead>{t('common.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {data?.data?.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">暂无数据</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">{t('common.noData')}</TableCell></TableRow>
             ) : (
               data?.data?.map((vdb: VDB) => (
                 <TableRow key={vdb.id} className={`border-b`}>
                   <TableCell>
                     <Link href={`/vdb/${vdb.id}/collections`} className="hover:underline">
                       {vdb.name}
-                      {vdb.status === 'revoked' && <Badge variant="destructive" className="ml-2">已被取消分享</Badge>}
+                      {vdb.status === 'revoked' && <Badge variant="destructive" className="ml-2">{t('vdb.revoked')}</Badge>}
                     </Link>
                   </TableCell>
                   <TableCell>{vdb.type}</TableCell>
@@ -115,21 +141,21 @@ export default function VDBPage() {
                         <TooltipTrigger asChild>
                           <span>
                             <Button size="sm" variant="outline" onClick={() => router.push(`/vdb/${vdb.id}/edit`)} disabled={vdb.status !== 'owned'}>
-                              编辑
+                              {t('common.edit')}
                             </Button>
                           </span>
                         </TooltipTrigger>
-                        {vdb.status !== 'owned' && <TooltipContent>仅拥有者团队可操作</TooltipContent>}
+                        {vdb.status !== 'owned' && <TooltipContent>{t('vdb.onlyOwnerTeam')}</TooltipContent>}
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
                             <Button size="sm" variant="secondary" onClick={() => setShareDialogVdb(vdb)} disabled={vdb.status !== 'owned'}>
-                              分享
+                              {t('common.share')}
                             </Button>
                           </span>
                         </TooltipTrigger>
-                        {vdb.status !== 'owned' && <TooltipContent>仅拥有者团队可操作</TooltipContent>}
+                        {vdb.status !== 'owned' && <TooltipContent>{t('vdb.onlyOwnerTeam')}</TooltipContent>}
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -137,27 +163,27 @@ export default function VDBPage() {
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button size="sm" variant="destructive" disabled={deletingId === vdb.id || vdb.status !== 'owned'}>
-                                  {deletingId === vdb.id ? "删除中..." : "删除"}
+                                  {deletingId === vdb.id ? t('common.deleting') : t('common.delete')}
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>确认删除？</AlertDialogTitle>
+                                  <AlertDialogTitle>{t('vdb.deleteConfirmTitle')}</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    确定要删除向量数据库「{vdb.name}」吗？此操作不可恢复。
+                                    {t('vdb.deleteConfirmDesc', { name: vdb.name })}
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>取消</AlertDialogCancel>
+                                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                                   <AlertDialogAction onClick={() => handleDelete(vdb.id, vdb.name)} disabled={deletingId === vdb.id}>
-                                    确认删除
+                                    {t('vdb.deleteConfirmButton')}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
                           </span>
                         </TooltipTrigger>
-                        {vdb.status !== 'owned' && <TooltipContent>仅拥有者团队可操作</TooltipContent>}
+                        {vdb.status !== 'owned' && <TooltipContent>{t('vdb.onlyOwnerTeam')}</TooltipContent>}
                       </Tooltip>
                     </TooltipProvider>
                   </TableCell>

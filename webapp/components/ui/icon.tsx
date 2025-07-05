@@ -7,7 +7,7 @@ interface IconProps extends SVGProps<SVGSVGElement> {
   name: string;
 }
 
-const iconComponents: { [key: string]: React.ComponentType<any> } = {
+const iconComponents: { [key: string]: React.ComponentType<SVGProps<SVGSVGElement>> } = {
   openai: dynamic(() => import('@/icons/openai.svg')),
   ollama: dynamic(() => import('@/icons/ollama.svg')),
   xinference: dynamic(() => import('@/icons/xinference.svg')),

@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation"
 import { post, put } from "@/lib/request"
 import { toast } from "sonner"
 import { SvgIconPicker } from "@/components/svg-icon-picker"
+import { useTranslation } from 'react-i18next'
 
 interface TeamFormProps {
   mode: "create" | "edit"
@@ -33,6 +34,7 @@ interface TeamFormProps {
 export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, showCancelButton = true }: TeamFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { t } = useTranslation()
 
   const form = useForm<TeamCreate>({
     resolver: zodResolver(TeamCreateSchema),
@@ -48,11 +50,11 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
     try {
       if (mode === "create") {
         await post("/teams", values)
-        toast.success("团队创建成功")
+        toast.success(t('teams.messages.createSuccess'))
         router.push("/teams")
       } else if (mode === "edit" && teamId) {
         await put(`/teams/${teamId}`, values)
-        toast.success("团队更新成功")
+        toast.success(t('teams.messages.updateSuccess'))
         if (onSuccess) {
           onSuccess()
         } else {
@@ -60,7 +62,7 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
         }
       }
     } catch (error) {
-      toast.error(mode === "create" ? "创建团队失败" : "更新团队失败")
+      toast.error(mode === "create" ? t('teams.messages.createFailed') : t('teams.messages.updateFailed'))
       console.error("Team operation failed:", error)
     } finally {
       setIsLoading(false)
@@ -75,7 +77,7 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
           name="icon_name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>团队图标</FormLabel>
+              <FormLabel>{t('teams.icon')}</FormLabel>
               <FormControl>
                 <SvgIconPicker
                   value={field.value || ""}
@@ -83,7 +85,7 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
                 />
               </FormControl>
               <FormDescription>
-                为团队选择一个图标，将在团队列表和侧边栏中显示。
+                {t('teams.descriptions.iconDesc')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -94,12 +96,12 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>团队名称</FormLabel>
+              <FormLabel>{t('teams.teamName')}</FormLabel>
               <FormControl>
-                <Input placeholder="输入团队名称" {...field} />
+                <Input placeholder={t('teams.placeholders.teamName')} {...field} />
               </FormControl>
               <FormDescription>
-                团队名称将在整个系统中显示。
+                {t('teams.descriptions.teamNameDesc')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -110,16 +112,16 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>团队描述</FormLabel>
+              <FormLabel>{t('teams.teamDescription')}</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="输入团队描述（可选）"
+                  placeholder={t('teams.placeholders.teamDescription')}
                   className="resize-none"
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                简要描述团队的目标和职责。
+                {t('teams.descriptions.teamDescriptionDesc')}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -127,7 +129,7 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
         />
         <div className="flex gap-4">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "保存中..." : mode === "create" ? "创建团队" : "更新团队"}
+            {isLoading ? t('actions.saving') : mode === "create" ? t('teams.createTeam') : t('teams.editTeam')}
           </Button>
           {showCancelButton && (
             <Button
@@ -141,7 +143,7 @@ export function TeamForm({ mode, defaultValues, teamId, onSuccess, onCancel, sho
                 }
               }}
             >
-              取消
+              {t('common.cancel')}
             </Button>
           )}
         </div>

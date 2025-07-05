@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import TextViewer from "@/components/text-viewer"
 import { Button } from "@/components/ui/button"
 import { Document } from "@/schemas/document"
+import { useTranslation } from "react-i18next"
 
 const PDFViewer = dynamic(() => import("@/components/pdf-viewer"), {
   ssr: false,
@@ -27,6 +28,8 @@ export default function DocumentPreviewPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const { t } = useTranslation();
+
   useEffect(() => {
     async function fetchDocument() {
       if (!doc_id) return
@@ -37,16 +40,16 @@ export default function DocumentPreviewPage() {
         if (response && response.code === 200 && response.data) {
           setDocumentInfo(response.data)
         } else {
-          setError('获取文档信息失败')
+          setError(t('documentView.fetchFailed'))
         }
-      } catch (err: any) {
-        setError(err.message || '获取文档信息失败')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t('documentView.fetchFailed'))
       } finally {
         setIsLoading(false)
       }
     }
     fetchDocument()
-  }, [doc_id])
+  }, [doc_id, t])
 
   const fileDownloadUrl = `/docs/${doc_id}/download`
 
@@ -62,17 +65,17 @@ export default function DocumentPreviewPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-red-500">
-        <h2 className="text-2xl font-bold mb-2">Error</h2>
+        <h2 className="text-2xl font-bold mb-2">{t('common.error')}</h2>
         <p>{error}</p>
         <Button onClick={() => window.location.reload()} className="mt-4">
-          Try Again
+          {t('common.retry')}
         </Button>
       </div>
     )
   }
 
   if (!documentInfo) {
-    return <div>No document information found.</div>
+    return <div>{t('documentView.noInfo')}</div>
   }
 
   const isPdf =
@@ -109,11 +112,11 @@ export default function DocumentPreviewPage() {
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-4 bg-white rounded-lg shadow-sm">
             <p className="mb-4 text-muted-foreground">
-              不支持预览此文件类型 ({documentInfo.filetype})。
+              {t('documentView.unsupportedType', { type: documentInfo.filetype })}
             </p>
             <Button asChild>
               <a href={fileDownloadUrl} download={documentInfo.filename}>
-                下载文件
+                {t('documentView.download')}
               </a>
             </Button>
           </div>

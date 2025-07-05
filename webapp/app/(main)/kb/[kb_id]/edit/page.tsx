@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { put, get } from "@/lib/request"
-import { KnowledgeBaseForm, KnowledgeBaseFormValues } from "@/app/(main)/kb/kb-form"
+import { KnowledgeBaseForm } from "@/app/(main)/kb/kb-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { fetchUser } from "@/stores/user-store"
+import { useTranslation } from 'react-i18next'
+import { Button } from "@/components/ui/button"
 
 const EditKBSkeleton = () => (
     <div className="w-full max-w-3xl space-y-6">
@@ -58,11 +60,13 @@ export default function KBEditPage() {
   const params = useParams()
   const kb_id = params.kb_id as string
 
-  const [kbData, setKbData] = useState<any>(null)
+  const [kbData, setKbData] = useState<any>({})
   const [isLoading, setIsLoading] = useState(false)
   const [kbError, setKbError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function fetchKb() {
@@ -74,35 +78,31 @@ export default function KBEditPage() {
         if (response && response.code === 200 && response.data) {
           setKbData(response.data)
         } else {
-          setKbError('获取知识库信息失败')
+          setKbError(t('kb.loadFailed'))
         }
-      } catch (err: any) {
-        setKbError(err.message || '获取知识库信息失败')
+      } catch (err: unknown) {
+        setKbError((err as Error).message || t('kb.loadFailed'))
       } finally {
         setIsLoading(false)
       }
     }
     fetchKb()
-  }, [kb_id])
+  }, [kb_id, t])
 
-  async function onSubmit(values: KnowledgeBaseFormValues) {
+  async function onSubmit(values: any) {
     setIsSubmitting(true)
     setError(null)
     try {
       await put(`/kb/${kb_id}`, values)
-      toast.success("更新成功", {
-        description: `知识库 "${values.name}" 已成功更新。`,
-      })
+      toast.success(t('kb.updateSuccess'))
       
       await fetchUser()
 
       router.push(`/kb/${kb_id}`)
       router.refresh()
-    } catch (err: any) {
-      setError(err.message || "更新失败，请稍后再试。")
-       toast.error("更新失败", {
-        description: err.message || "未知错误，请检查您的网络或联系管理员。",
-      })
+    } catch (err: unknown) {
+      setError((err as Error).message || t('kb.updateFailed'))
+       toast.error(err instanceof Error ? err.message : t('kb.updateFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -113,23 +113,21 @@ export default function KBEditPage() {
         <EditKBSkeleton />
       </div>
   )
-  if (kbError) return <div className="text-red-500">加载知识库数据失败: {kbError}</div>
+  if (kbError) return <div className="text-red-500">{t('kb.loadFailed')}: {kbError}</div>
 
   return (
     <div className="flex justify-center px-4">
       <div className="w-full max-w-3xl space-y-6 py-8">
         <header>
-          <CardTitle className="text-2xl">编辑知识库</CardTitle>
-          <CardDescription className="mt-2">
-            更新您的知识库 "{kbData?.name}" 的详细信息。
-          </CardDescription>
+          <h2 className="text-2xl font-bold">{t('kb.editTitle')}</h2>
+          <CardDescription>{t('kb.editDesc', { name: kbData?.name })}</CardDescription>
         </header>
 
         <KnowledgeBaseForm
           initialData={kbData}
           onSubmit={onSubmit}
           isSubmitting={isSubmitting}
-          submitButtonText="保存更改"
+          submitButtonText={t('common.save')}
           editingKbId={Number(kb_id)}
         />
         

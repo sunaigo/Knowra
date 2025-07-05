@@ -109,9 +109,9 @@ export function ConnectionForm({
       await post("/connections/test", testPayload);
       setTestStatus("success");
       toast.success(t("connections.testSuccess"));
-    } catch (error: any) {
+    } catch (error) {
       setTestStatus("error");
-      const errorMessage = error.detail || error.message || t("connections.testFailed");
+      const errorMessage = (error instanceof Error ? error.message : t("connections.testFailed"));
       setTestError(errorMessage);
       toast.error(t("connections.testFailed"));
     }
@@ -128,8 +128,8 @@ export function ConnectionForm({
         toast.success(t("connections.createSuccess"));
       }
       onSuccess();
-    } catch (error: any) {
-      toast.error(`${t("connections.saveFailed")}: ${error.detail || error.message}`);
+    } catch (error) {
+      toast.error(`${t("connections.saveFailed")}: ${(error instanceof Error ? error.message : "")}`);
     } finally {
       setIsSubmitting(false);
     }

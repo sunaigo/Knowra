@@ -42,8 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { get, post, put } from "@/lib/request"
-import { buttonVariants } from "@/components/ui/button"
+import { get, post } from "@/lib/request"
 import { DocumentSettingsDialog } from "@/components/document-settings-dialog"
 import { KnowledgeBase } from "@/schemas/knowledge-base"
 import { Document as Doc } from "@/schemas/document"
@@ -100,7 +99,6 @@ export default function DocumentChunksPage() {
   const [kbData, setKbData] = useState<KnowledgeBase | null>(null)
   const [isLoadingChunks, setIsLoadingChunks] = useState(true)
   const [isLoadingDocument, setIsLoadingDocument] = useState(true)
-  const [isLoadingKb, setIsLoadingKb] = useState(false)
   const [hasChunksError, setHasChunksError] = useState(false)
   const [hasDocumentError, setHasDocumentError] = useState(false)
 
@@ -144,7 +142,6 @@ export default function DocumentChunksPage() {
 
   const fetchKb = useCallback(async () => {
     if (!kb_id) return
-    setIsLoadingKb(true)
     try {
       const response = await get(`/kb/${kb_id}`)
       if (response && response.code === 200 && response.data) {
@@ -152,8 +149,6 @@ export default function DocumentChunksPage() {
       }
     } catch (error) {
       console.error('Failed to fetch knowledge base:', error)
-    } finally {
-      setIsLoadingKb(false)
     }
   }, [kb_id])
 

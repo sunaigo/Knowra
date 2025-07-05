@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation"
 import { useTranslation } from 'react-i18next'
 import i18n from 'i18next'
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useUserSettingsStore } from '@/stores/user-settings-store'
 
 export function NavUser({
   user,
@@ -47,6 +48,7 @@ export function NavUser({
   const { isMobile } = useSidebar()
   const router = useRouter()
   const { t } = useTranslation('common')
+  const setUserLanguage = useUserSettingsStore(state => state.setLanguage)
 
   function handleLogout() {
     localStorage.removeItem("token")
@@ -114,13 +116,13 @@ export function NavUser({
                   <DropdownMenuSubTrigger>🌐 {t('language')}</DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem
-                      onClick={() => i18n.changeLanguage('zh-CN')}
+                      onClick={() => { i18n.changeLanguage('zh-CN'); setUserLanguage('zh-CN') }}
                       className={i18n.language === 'zh-CN' ? 'font-bold text-primary' : ''}
                     >
-                      中文 {i18n.language === 'zh-CN' && '✓'}
+                      {t('navUser.zhCN')} {i18n.language === 'zh-CN' && '✓'}
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => i18n.changeLanguage('en')}
+                      onClick={() => { i18n.changeLanguage('en'); setUserLanguage('en') }}
                       className={i18n.language === 'en' ? 'font-bold text-primary' : ''}
                     >
                       English {i18n.language === 'en' && '✓'}

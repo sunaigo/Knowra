@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { CustomSvgIcon } from "@/components/custom-svg-icon";
+import { useTranslation } from 'react-i18next'
 
 interface CustomIcon {
   name: string;
@@ -23,12 +24,13 @@ export default function IconManagerPage() {
   const [customIcons, setCustomIcons] = useState<CustomIcon[]>([]);
   const [loading, setLoading] = useState(false);
   const [iconType, setIconType] = useState<'all' | 'solid' | 'outline'>('all');
+  const { t } = useTranslation()
 
   // 拉取自定义svg图标
   useEffect(() => {
     setLoading(true);
     get("/icons/custom?with_content=true")
-      .then((res: any) => {
+      .then((res: { data: CustomIcon[] }) => {
         setCustomIcons(res.data || []);
       })
       .finally(() => setLoading(false));
@@ -46,7 +48,7 @@ export default function IconManagerPage() {
       Icon,
       type: "outline" as const
     }));
-    let list: any[] = [];
+    let list: { name: string; Icon: React.FC<{ className?: string }>; type: 'solid' | 'outline' }[] = [];
     if (iconType === 'solid') list = solid;
     else if (iconType === 'outline') list = outline;
     else list = [...solid, ...outline];
@@ -99,15 +101,15 @@ export default function IconManagerPage() {
     <div className="w-full flex justify-center bg-background min-h-[100vh]">
       <div className="w-full max-w-7xl px-4 sm:px-8 pt-8 pb-16">
         <div className="sticky top-0 z-20 bg-background pb-4 mb-4 flex flex-col gap-4">
-          <h1 className="text-3xl font-bold mb-2 text-foreground">图标管理</h1>
+          <h1 className="text-3xl font-bold mb-2 text-foreground">{t('icon.manage')}</h1>
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
             <div className="flex gap-2">
-              <Button variant={iconType === 'all' ? 'default' : 'outline'} onClick={() => setIconType('all')}>全部</Button>
-              <Button variant={iconType === 'solid' ? 'default' : 'outline'} onClick={() => setIconType('solid')}>实心</Button>
-              <Button variant={iconType === 'outline' ? 'default' : 'outline'} onClick={() => setIconType('outline')}>线框</Button>
+              <Button variant={iconType === 'all' ? 'default' : 'outline'} onClick={() => setIconType('all')}>{t('icon.all')}</Button>
+              <Button variant={iconType === 'solid' ? 'default' : 'outline'} onClick={() => setIconType('solid')}>{t('icon.solid')}</Button>
+              <Button variant={iconType === 'outline' ? 'default' : 'outline'} onClick={() => setIconType('outline')}>{t('icon.outline')}</Button>
             </div>
             <Input
-              placeholder={`搜索 ${filteredCustomIcons.length + filteredBuiltInIcons.length} 个图标 ...`}
+              placeholder={t('icon.searchPlaceholder', { count: filteredCustomIcons.length + filteredBuiltInIcons.length })}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="rounded-full max-w-lg flex-1 border-border shadow-sm focus:ring-2 focus:ring-primary-100"
@@ -118,13 +120,13 @@ export default function IconManagerPage() {
                 return (
                   <Dialog open={open} onOpenChange={setOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="default" className="h-10 px-6 text-base font-semibold shadow-md">上传自定义SVG</Button>
+                      <Button variant="default" className="h-10 px-6 text-base font-semibold shadow-md">{t('icon.uploadCustom')}</Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-md">
                       <DialogHeader>
-                        <DialogTitle>上传自定义SVG图标</DialogTitle>
+                        <DialogTitle>{t('icon.uploadTitle')}</DialogTitle>
                         <DialogDescription className="text-muted-foreground text-xs mt-1">
-                          图标名需唯一，仅支持英文、数字、下划线和-，SVG文件≤16KB。
+                          {t('icon.uploadDesc')}
                         </DialogDescription>
                       </DialogHeader>
                       <div className="py-1">
@@ -150,34 +152,34 @@ export default function IconManagerPage() {
           <>
             {/* 自定义图标区 */}
             <div className="mb-4 mt-12 text-xl font-bold text-foreground">
-              自定义图标
+              {t('icon.custom')}
             </div>
             <div className="flex flex-wrap justify-start gap-x-8 gap-y-10 mb-14">
-              {filteredCustomIcons.length === 0 && <div className="w-full text-center text-muted-foreground py-10 text-base">暂无自定义图标</div>}
-              {filteredCustomIcons.filter(icon => !!(icon as any).content).map((icon, idx) => (
+              {filteredCustomIcons.length === 0 && <div className="w-full text-center text-muted-foreground py-10 text-base">{t('icon.noCustom')}</div>}
+              {filteredCustomIcons.filter((icon): icon is CustomIcon & { type: 'custom'; content: string } => !!icon.content && (icon as { type?: string }).type === 'custom').map((icon, idx) => (
                 <div
-                  key={`custom:${icon.name}:${(icon as any).content ? simpleHash((icon as any).content) : idx}`}
+                  key={`custom:${icon.name}:${icon.content ? simpleHash(icon.content) : idx}`}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card shadow hover:shadow-md hover:bg-accent transition p-5 group cursor-pointer min-h-[110px] w-28"
                   title={icon.name}
                 >
-                  <CustomSvgIcon content={(icon as any).content} width={36} height={36} className="mb-1 text-foreground" />
+                  <CustomSvgIcon content={icon.content} width={36} height={36} className="mb-1 text-foreground" />
                   <span className="block w-full text-center truncate text-xs font-medium text-card-foreground group-hover:text-primary-700 select-all" title={icon.name}>{icon.name}</span>
                 </div>
               ))}
             </div>
             {/* 内置图标区 */}
             <div className="mb-4 mt-16 text-xl font-bold text-foreground">
-              内置图标
+              {t('icon.builtIn')}
             </div>
             <div className="grid gap-5 grid-cols-[repeat(auto-fit,minmax(112px,1fr))] justify-center">
-              {filteredBuiltInIcons.length === 0 && <div className="col-span-full text-center text-muted-foreground py-10 text-base">暂无内置图标</div>}
+              {filteredBuiltInIcons.length === 0 && <div className="col-span-full text-center text-muted-foreground py-10 text-base">{t('icon.noBuiltIn')}</div>}
               {filteredBuiltInIcons.map((icon) => (
                 <div
                   key={`${icon.type}:${icon.name}`}
                   className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card shadow hover:shadow-md hover:bg-accent transition p-5 group cursor-pointer min-h-[110px] w-28"
                   title={icon.name}
                 >
-                  {(() => { const HeroIcon = (icon as any).Icon as React.FC<any>; return <HeroIcon className="w-9 h-9 mb-1" />; })()}
+                  {(() => { const HeroIcon = (icon as { Icon: React.FC<{ className?: string }> }).Icon; return <HeroIcon className="w-9 h-9 mb-1" />; })()}
                   <span className="block w-full text-center truncate text-xs font-medium text-card-foreground group-hover:text-green-700 select-all" title={icon.name}>{icon.name}</span>
                 </div>
               ))}
@@ -191,6 +193,7 @@ export default function IconManagerPage() {
 
 // 上传表单子组件
 const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }> = ({ allIconNames, onUploaded }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
@@ -235,8 +238,8 @@ const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }
     const f = e.target.files?.[0] || null;
     setFile(f);
     if (f) {
-      let rawName = f.name.replace(/\.svg$/i, "");
-      let validName = rawName.replace(/[^a-zA-Z0-9_-]/g, "");
+      const rawName = f.name.replace(/\.svg$/i, "");
+      const validName = rawName.replace(/[^a-zA-Z0-9_-]/g, "");
       setName(validName);
 
       const reader = new FileReader();
@@ -255,23 +258,23 @@ const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }
     e.preventDefault();
     setError("");
     if (!validateName(name)) {
-      setError("图标名不合法，仅支持英文、数字、下划线和-");
+      setError(t('icon.invalidName'));
       return;
     }
     if (allIconNames.includes(name)) {
-      setError("图标名已存在");
+      setError(t('icon.nameExists'));
       return;
     }
     if (!file) {
-      setError("请选择SVG文件");
+      setError(t('icon.selectFile'));
       return;
     }
     if (file.size > 16 * 1024) {
-      setError("SVG文件不能超过16KB");
+      setError(t('icon.fileTooLarge'));
       return;
     }
     if (!svgContent) {
-      setError("无法读取SVG文件内容或内容无效");
+      setError(t('icon.invalidFile'));
       return;
     }
 
@@ -283,8 +286,8 @@ const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }
         body: JSON.stringify({ name, content: svgContent }),
       });
       onUploaded();
-    } catch (err: any) {
-      setError(err.message || "上传失败");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('icon.uploadFailed'));
     } finally {
       setLoading(false);
     }
@@ -293,7 +296,7 @@ const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <label htmlFor="icon-name" className="text-sm font-medium text-foreground">图标英文名</label>
+        <label htmlFor="icon-name" className="text-sm font-medium text-foreground">{t('icon.nameLabel')}</label>
         <Input
           id="icon-name"
           value={name}
@@ -305,11 +308,11 @@ const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">SVG 文件</label>
+        <label className="text-sm font-medium text-foreground">{t('icon.fileLabel')}</label>
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <Button type="button" variant="outline" className="w-full justify-start text-muted-foreground font-normal" onClick={() => fileInputRef.current?.click()}>
-              {file ? file.name : "选择文件"}
+              {file ? file.name : t('icon.selectFile')}
             </Button>
             <Input
               ref={fileInputRef}
@@ -334,7 +337,7 @@ const SvgUploadForm: React.FC<{ allIconNames: string[]; onUploaded: () => void }
 
       <Button type="submit" disabled={loading || !name || !file} className="w-full">
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        上传自定义SVG
+        {t('icon.uploadCustom')}
       </Button>
     </form>
   );

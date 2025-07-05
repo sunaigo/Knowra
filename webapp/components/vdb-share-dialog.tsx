@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTeams, useActiveTeamId } from '@/stores/user-store'
 import { post, get } from '@/lib/request'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 
 interface VdbShareDialogProps {
   vdb: {
@@ -19,6 +20,7 @@ interface VdbShareDialogProps {
 export function VdbShareDialog({ vdb, onClose, onSuccess }: VdbShareDialogProps) {
   const teams = useTeams()
   const activeTeamId = useActiveTeamId()
+  const { t } = useTranslation()
   // 可选团队（排除自己团队）
   const candidateTeams = useMemo(() => teams.filter(t => String(t.id) !== String(vdb.team_id)), [teams, vdb.team_id])
   // 已分享团队
@@ -52,11 +54,11 @@ export function VdbShareDialog({ vdb, onClose, onSuccess }: VdbShareDialogProps)
     setLoading(true)
     try {
       await post(`/vdb/${vdb.id}/share`, { team_ids: selectedIds })
-      toast.success('分享设置已保存')
+      toast.success(t('vdbShare.saveSuccess'))
       onClose()
       onSuccess?.()
-    } catch (e: any) {
-      toast.error(e?.message || '保存失败')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('vdbShare.saveFailed'))
     }
     setLoading(false)
   }
@@ -65,18 +67,16 @@ export function VdbShareDialog({ vdb, onClose, onSuccess }: VdbShareDialogProps)
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>分享向量库到其他团队</DialogTitle>
-          <DialogDescription>
-            选择要分享的团队，保存后该团队成员可访问此向量库。
-          </DialogDescription>
+          <DialogTitle>{t('vdbShare.title')}</DialogTitle>
+          <DialogDescription>{t('vdbShare.desc')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <div className="mb-2 text-sm font-medium">选择要分享的团队</div>
+            <div className="mb-2 text-sm font-medium">{t('vdbShare.selectTeam')}</div>
             <div className="flex gap-2">
               <Select value={addTeamId} onValueChange={setAddTeamId}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="选择团队" />
+                  <SelectValue placeholder={t('vdbShare.selectTeamPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {candidateTeams.map(team => (
@@ -86,13 +86,13 @@ export function VdbShareDialog({ vdb, onClose, onSuccess }: VdbShareDialogProps)
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={handleAdd} disabled={!addTeamId || selectedIds.includes(Number(addTeamId))}>添加</Button>
+              <Button onClick={handleAdd} disabled={!addTeamId || selectedIds.includes(Number(addTeamId))}>{t('vdbShare.add')}</Button>
             </div>
           </div>
           <div>
-            <div className="mb-2 text-sm font-medium">已分享团队</div>
+            <div className="mb-2 text-sm font-medium">{t('vdbShare.sharedTeams')}</div>
             {selectedIds.length === 0 ? (
-              <div className="text-muted-foreground text-sm">暂无</div>
+              <div className="text-muted-foreground text-sm">{t('common.none')}</div>
             ) : (
               <ul className="space-y-1">
                 {selectedIds.map(id => {
@@ -100,7 +100,7 @@ export function VdbShareDialog({ vdb, onClose, onSuccess }: VdbShareDialogProps)
                   return (
                     <li key={id} className="flex items-center gap-2">
                       <span>{team?.name || `ID:${id}`}</span>
-                      <Button size="sm" variant="ghost" onClick={() => handleRemove(id)} disabled={loading}>移除</Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleRemove(id)} disabled={loading}>{t('vdbShare.remove')}</Button>
                     </li>
                   )
                 })}
@@ -109,10 +109,8 @@ export function VdbShareDialog({ vdb, onClose, onSuccess }: VdbShareDialogProps)
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>取消</Button>
-          <Button onClick={handleSave} disabled={loading}>
-            {loading ? '保存中...' : '保存'}
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
+          <Button onClick={handleSave} disabled={loading}>{loading ? t('vdbShare.saving') : t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

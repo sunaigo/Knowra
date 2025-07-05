@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Document } from '@/schemas/document';
 import { KnowledgeBase } from '@/schemas/knowledge-base';
 import { put } from '@/lib/request';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 interface DocumentSettingsDialogProps {
   document: Document | null;
@@ -35,6 +37,7 @@ export function DocumentSettingsDialog({
   const [overlap, setOverlap] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (document) {
@@ -68,8 +71,10 @@ export function DocumentSettingsDialog({
       await put(`/docs/${document.id}`, payload);
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || '更新失败，请稍后再试。');
+      toast.success(t('docSettings.saveSuccess'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('docSettings.saveFailed'));
+      toast.error(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -82,14 +87,12 @@ export function DocumentSettingsDialog({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>文档处理参数</DialogTitle>
-            <DialogDescription>
-              为文档 <span className="font-semibold">{document?.filename}</span> 设置独立的分块参数。留空则继承知识库的默认设置。
-            </DialogDescription>
+            <DialogTitle>{t('docSettings.title')}</DialogTitle>
+            <DialogDescription>{t('docSettings.desc')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="chunk-size">分块大小 (知识库默认: {kbChunkSize})</Label>
+              <Label htmlFor="chunk-size">{t('docSettings.chunkSizeLabel', { kbChunkSize })}</Label>
                <div className="flex items-center gap-2">
                   <Input
                       id="chunk-size"
@@ -98,11 +101,11 @@ export function DocumentSettingsDialog({
                       onChange={(e) => setChunkSize(e.target.value)}
                       placeholder={kbChunkSize?.toString() ?? '1000'}
                   />
-                   <Button variant="outline" size="sm" onClick={() => handleReset('chunkSize')}>重置</Button>
+                   <Button variant="outline" size="sm" onClick={() => handleReset('chunkSize')}>{t('docSettings.reset')}</Button>
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="overlap">重叠大小 (知识库默认: {kbOverlap})</Label>
+              <Label htmlFor="overlap">{t('docSettings.overlapLabel', { kbOverlap })}</Label>
                <div className="flex items-center gap-2">
                   <Input
                       id="overlap"
@@ -111,15 +114,15 @@ export function DocumentSettingsDialog({
                       onChange={(e) => setOverlap(e.target.value)}
                       placeholder={kbOverlap?.toString() ?? '100'}
                   />
-                  <Button variant="outline" size="sm" onClick={() => handleReset('overlap')}>重置</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleReset('overlap')}>{t('docSettings.reset')}</Button>
               </div>
             </div>
           </div>
           <DialogFooter>
             {error && <p className="text-sm text-red-600 mr-auto">{error}</p>}
-            <Button variant="outline" onClick={onClose}>取消</Button>
+            <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? '保存中...' : '保存'}
+              {isSubmitting ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

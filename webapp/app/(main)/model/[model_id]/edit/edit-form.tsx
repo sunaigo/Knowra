@@ -1,7 +1,7 @@
 "use client"
 
-import useSWR from "swr"
-import { fetcher } from "@/lib/request"
+import { useState, useEffect } from "react"
+import { get } from "@/lib/request"
 import { Model } from "@/schemas/model"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -12,15 +12,24 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import ModelForm from "../../model-form"
+import { useTranslation } from 'react-i18next'
+import { Button } from "@/components/ui/button"
 
 export default function EditModelForm({ modelId }: { modelId: string }) {
-  const {
-    data: response,
-    isLoading,
-    error,
-  } = useSWR<{ code: number; message: string; data: Model }>(`/models/${modelId}`, fetcher)
+  const [model, setModel] = useState<Model | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const { t } = useTranslation()
 
-  const model = response?.data
+  useEffect(() => {
+    if (!modelId) return
+    setIsLoading(true)
+    setError(null)
+    get(`/models/${modelId}`)
+      .then(res => setModel(res.data))
+      .catch(e => setError(e))
+      .finally(() => setIsLoading(false))
+  }, [modelId])
 
   if (isLoading) {
     return (
@@ -48,11 +57,14 @@ export default function EditModelForm({ modelId }: { modelId: string }) {
   }
 
   if (error) {
+    const msg = typeof error === 'object' && error !== null && 'message' in error
+      ? (error as { message: string }).message
+      : (typeof error === 'string' ? error : t('model.updateFailed'))
     return (
       <Card>
         <CardHeader>
-          <CardTitle>加载失败</CardTitle>
-          <CardDescription>{error.message}</CardDescription>
+          <CardTitle>{t('modelEdit.loadFailed')}</CardTitle>
+          <CardDescription>{msg}</CardDescription>
         </CardHeader>
       </Card>
     )

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { useTranslation } from 'react-i18next'
 
 type ColumnsOptions = {
   onDelete: (id: number) => void
@@ -21,14 +22,17 @@ type ColumnsOptions = {
 export const columns = ({
   onDelete,
 }: ColumnsOptions): ColumnDef<Model>[] => {
+
+  const { t } = useTranslation()
+
   return [
     {
       accessorKey: "model_name",
-      header: "名称",
+      header: t('model.name'),
     },
     {
       accessorKey: "model_type",
-      header: "类型",
+      header: t('model.type'),
       cell: ({ row }) => {
         const modelType = row.getValue("model_type") as string
         const variant = modelType === "llm" ? "default" : "secondary"
@@ -37,7 +41,7 @@ export const columns = ({
     },
     {
       accessorKey: "connection.name",
-      header: "连接",
+      header: t('model.connection'),
       cell: ({ row }) => {
         const model = row.original
         return model.connection?.name ?? "N/A"
@@ -45,7 +49,7 @@ export const columns = ({
     },
     {
       accessorKey: "updated_at",
-      header: "更新时间",
+      header: t('model.updatedAt'),
       cell: ({ row }) => {
         const updatedAt = row.getValue("updated_at")
         return updatedAt ? new Date(updatedAt as string).toLocaleString() : "N/A"
@@ -60,13 +64,13 @@ export const columns = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">打开菜单</span>
+                <span className="sr-only">{t('common.openMenu')}</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/models/${model.id}/edit`}>编辑</Link>
+                <Link href={`/models/${model.id}/edit`}>{t('common.edit')}</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -74,7 +78,7 @@ export const columns = ({
                 onClick={() => model.id && onDelete(model.id)}
                 disabled={!model.id}
               >
-                删除
+                {t('common.delete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

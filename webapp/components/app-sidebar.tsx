@@ -33,12 +33,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
 
   const navMenuItems = React.useMemo(() => {
-    const kbItems = (knowledgeBases || []).map((kb: KnowledgeBase) => ({
-      title: kb.name,
-      url: `/kb/${kb.id}/documents`,
-      icon: () => <TeamIcon team={{ ...kb, role: 'member', description: kb.description || "", icon_name: kb.icon_name || null }} size="sm" />,
-      isActive: pathname.startsWith(`/kb/${kb.id}`),
-    }))
 
     return [
       {
@@ -46,7 +40,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: '/kb',
         icon: BookOpen,
         isActive: pathname.startsWith('/kb'),
-        items: kbItems,
+        // items: kbItems,
       },
       {
         title: t('sidebar.model.title'),
@@ -54,8 +48,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: SquareTerminal,
         isActive: pathname.startsWith('/models') || pathname.startsWith('/connections'),
         items: [
-          { title: t('sidebar.model.list'), url: '/models', isActive: pathname.startsWith('/models') },
-          { title: t('sidebar.model.connections'), url: '/connections', isActive: pathname.startsWith('/connections') },
+          { title: t('sidebar.model.list'), url: '/model', isActive: pathname.startsWith('/models') },
+          { title: t('sidebar.model.connections'), url: '/model/model_connection', isActive: pathname.startsWith('/model/model_connection') },
         ],
       },
       {
@@ -69,23 +63,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ],
       },
       {
-        title: '数据存储管理',
+        title: t('sidebar.dataStorage'),
         url: '/vdb',
         icon: Database,
         isActive: pathname.startsWith('/vdb') || pathname.startsWith('/documents'),
         items: [
-          { title: '向量数据库', url: '/vdb', isActive: pathname.startsWith('/vdb') },
-          { title: '文件存储位置', url: '/documents', isActive: pathname.startsWith('/documents') },
+          { title: t('sidebar.vectorDB'), url: '/vdb', isActive: pathname.startsWith('/vdb') },
+          { title: t('sidebar.fileStorage'), url: '/documents', isActive: pathname.startsWith('/documents') },
         ],
       },
       {
-        title: t('sidebar.settings', '系统设置'),
+        title: t('sidebar.settings'),
         url: '/settings/icons',
         icon: Settings,
         isActive: pathname.startsWith('/settings'),
         items: [
           {
-            title: t('sidebar.iconManager', '图标管理'),
+            title: t('sidebar.iconManager'),
             url: '/settings/icons',
             isActive: pathname.startsWith('/settings/icons'),
           },

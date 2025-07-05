@@ -23,8 +23,8 @@ function buildHeaders(isFormData: boolean = false): Record<string, string> {
   return headers;
 }
 
-function isPlainObject(obj: any) {
-  return Object.prototype.toString.call(obj) === '[object Object]'
+function isPlainObject(obj: unknown): obj is Record<string, unknown> {
+  return Object.prototype.toString.call(obj) === '[object Object]';
 }
 
 // 新增：全局401处理hook
@@ -50,7 +50,7 @@ export async function request(
   const { responseType = 'json', ...restOptions } = options;
   const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`
   const isFormData = restOptions.body instanceof FormData;
-  let headers: Record<string, string> = buildHeaders(isFormData);
+  const headers: Record<string, string> = buildHeaders(isFormData);
   
   if (restOptions.headers) {
     for (const [key, value] of Object.entries(restOptions.headers)) {
@@ -60,7 +60,7 @@ export async function request(
     }
   }
 
-  let body = restOptions.body
+  let body = restOptions.body as BodyInit | null | undefined;
   if (
     restOptions.form &&
     body &&
@@ -119,19 +119,19 @@ export function get(url: string, options?: (RequestInit & { responseType?: 'json
   return request(url, { ...options, method: "GET" })
 }
 
-export function post(url: string, body: any, options?: Omit<RequestInit, 'body'> & { form?: boolean, on401?: () => void }) {
-  const { on401, ...restOptions } = options || {}
-  return request(url, { ...restOptions, method: "POST", body })
+export function post<T = unknown>(url: string, body: unknown, options?: Omit<RequestInit, 'body'> & { form?: boolean, on401?: () => void }): Promise<T> {
+  const { on401, ...restOptions } = options || {};
+  return request(url, { ...restOptions, method: "POST", body: body as BodyInit | null | undefined });
 }
 
-export const put = async <T = any>(
+export const put = async <T = unknown>(
   url: string,
-  data?: any,
+  data?: unknown,
   options?: RequestInit & { form?: boolean; responseType?: 'json' | 'blob' },
 ): Promise<T> => {
   return request(url, {
     method: 'PUT',
-    body: data,
+    body: data as BodyInit | null | undefined,
     ...options,
   });
 };

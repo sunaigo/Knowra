@@ -3,6 +3,7 @@ import pako from "pako";
 import { get } from "@/lib/request";
 import * as HeroIconsSolid from "@heroicons/react/24/solid";
 import * as HeroIconsOutline from "@heroicons/react/24/outline";
+import { useTranslation } from 'react-i18next'
 
 interface CustomSvgIconProps {
   name?: string;
@@ -21,7 +22,7 @@ function optimizeSvg(svgString: string, width: number, height: number): string {
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("width", width.toString());
     svg.setAttribute("height", height.toString());
-    let vb = svg.getAttribute("viewBox");
+    const vb = svg.getAttribute("viewBox");
     if (!vb) {
       const w = svg.getAttribute("width") || width;
       const h = svg.getAttribute("height") || height;
@@ -33,12 +34,17 @@ function optimizeSvg(svgString: string, width: number, height: number): string {
   }
 }
 
+// 明确 Heroicons 类型
+const heroIconsSolid = HeroIconsSolid as Record<string, React.FC<React.SVGProps<SVGSVGElement>>>;
+const heroIconsOutline = HeroIconsOutline as Record<string, React.FC<React.SVGProps<SVGSVGElement>>>;
+
 export const CustomSvgIcon: React.FC<CustomSvgIconProps> = ({ name, content, width = 24, height = 24, className }) => {
   const [svgContent, setSvgContent] = useState<string | null>(content || null);
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation()
 
-  const isHeroIconSolid = name && (HeroIconsSolid as any)[name];
-  const isHeroIconOutline = name && (HeroIconsOutline as any)[name];
+  const isHeroIconSolid = name && heroIconsSolid[name];
+  const isHeroIconOutline = name && heroIconsOutline[name];
 
   // 如果没有content但有name，自动请求后端
   useEffect(() => {
@@ -58,11 +64,11 @@ export const CustomSvgIcon: React.FC<CustomSvgIconProps> = ({ name, content, wid
 
   // 优先渲染内置Heroicons
   if (isHeroIconSolid) {
-    const HeroIcon = (HeroIconsSolid as any)[name];
+    const HeroIcon = heroIconsSolid[name!];
     return <HeroIcon className={className} style={{ width, height, display: "block" }} />;
   }
   if (isHeroIconOutline) {
-    const HeroIcon = (HeroIconsOutline as any)[name];
+    const HeroIcon = heroIconsOutline[name!];
     return <HeroIcon className={className} style={{ width, height, display: "block" }} />;
   }
 
@@ -81,13 +87,13 @@ export const CustomSvgIcon: React.FC<CustomSvgIconProps> = ({ name, content, wid
       svg = optimizeSvg(decompressed, width, height);
     }
   } catch (e) {
-    svg = "<svg viewBox='0 0 24 24'><text x='0' y='12' font-size='10'>SVG错误</text></svg>";
+    svg = `<svg viewBox='0 0 24 24'><text x='0' y='12' font-size='10'>${t('customSvgIcon.svgError')}</text></svg>`;
   }
   if (loading && !svg) {
-    return <span className={className} style={{ width, height, display: "inline-block", verticalAlign: "middle" }}>加载中...</span>;
+    return <span className={className} style={{ width, height, display: "inline-block", verticalAlign: "middle" }}>{t('customSvgIcon.loading')}</span>;
   }
   if (!svg) {
-    return <span className={className} style={{ width, height, display: "inline-block", verticalAlign: "middle" }}>无图标</span>;
+    return <span className={className} style={{ width, height, display: "inline-block", verticalAlign: "middle" }}>{t('customSvgIcon.noIcon')}</span>;
   }
   return (
     <span

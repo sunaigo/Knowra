@@ -5,6 +5,7 @@ import { get } from '@/lib/request';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useTranslation } from 'react-i18next';
 
 interface TextViewerProps {
   docId: string;
@@ -19,6 +20,7 @@ export default function TextViewer({ docId }: TextViewerProps) {
   const isFetching = useRef(false);
   
   const observer = useRef<IntersectionObserver>();
+  const { t } = useTranslation();
 
   const fetchContent = useCallback(async (offset: number) => {
     if (isFetching.current) return;
@@ -90,7 +92,7 @@ export default function TextViewer({ docId }: TextViewerProps) {
                 )}
                 <div ref={lastElementRef} style={{ height: '1px' }} />
                 {error && <div className="text-red-500 mt-4 text-center">{error}</div>}
-                {nextOffset === null && content && <div className="text-center text-muted-foreground mt-4 py-2 text-sm">文档末尾</div>}
+                {nextOffset === null && content && <div className="text-center text-muted-foreground mt-4 py-2 text-sm">{t('textViewer.end')}</div>}
             </ScrollArea>
         </CardContent>
     </Card>

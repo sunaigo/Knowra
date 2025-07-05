@@ -45,7 +45,7 @@ const uploadFileWithXHR = (
   kb_id: string,
   file: UploadableFile,
   onProgress: (progress: number) => void
-): Promise<any> => {
+): Promise<unknown> => {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     const formData = new FormData()

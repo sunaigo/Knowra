@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { SvgUploadDialog } from "@/components/svg-upload-dialog";
 import { CustomSvgIcon } from "@/components/custom-svg-icon";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { useTranslation } from 'react-i18next'
 
 interface CustomIcon {
   name: string;
@@ -25,6 +26,10 @@ interface SvgIconPickerProps {
   customIcons?: CustomIcon[];
 }
 
+// 明确 Heroicons 类型
+const heroIconsSolid = HeroIconsSolid as Record<string, React.FC<React.SVGProps<SVGSVGElement>>>;
+const heroIconsOutline = HeroIconsOutline as Record<string, React.FC<React.SVGProps<SVGSVGElement>>>;
+
 export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, customIcons = [] }) => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -32,6 +37,7 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
   const [icons, setIcons] = useState<CustomIcon[]>(customIcons);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const { t } = useTranslation()
 
   // 拉取自定义svg图标
   const fetchCustomIcons = useCallback(async () => {
@@ -61,12 +67,12 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
 
   // 全量 Heroicons
   const heroIconList = useMemo(() => {
-    const solid = Object.entries(HeroIconsSolid).map(([name, Icon]) => ({
+    const solid = Object.entries(heroIconsSolid).map(([name, Icon]) => ({
       name,
       Icon,
       type: "solid" as const
     }));
-    const outline = Object.entries(HeroIconsOutline).map(([name, Icon]) => ({
+    const outline = Object.entries(heroIconsOutline).map(([name, Icon]) => ({
       name,
       Icon,
       type: "outline" as const
@@ -107,16 +113,16 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
         <Button variant="outline" className="w-16 h-16 p-0 flex items-center justify-center">
           {(() => {
             const found = allIcons.find(i => i.name === value);
-            if (!found) return <span className="text-gray-400">选择图标</span>;
+            if (!found) return <span className="text-gray-400">{t('iconPicker.selectIcon')}</span>;
             if (found.type === "custom") {
               return (
                 <CustomSvgIcon content={found.content} width={48} height={48} className="text-primary" />
               );
             } else if (found.type === "solid" || found.type === "outline") {
-              const HeroIcon = found.Icon as React.FC<any>;
+              const HeroIcon = found.Icon;
               return <HeroIcon style={{ width: 48, height: 48, display: 'block' }} />;
             }
-            return <span className="text-gray-400">选择图标</span>;
+            return <span className="text-gray-400">{t('iconPicker.selectIcon')}</span>;
           })()}
         </Button>
       </PopoverTrigger>
@@ -129,12 +135,12 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
       >
         <div className="flex items-center mb-2 gap-2">
           <Input
-            placeholder="搜索图标名..."
+            placeholder={t('iconPicker.searchPlaceholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1"
           />
-          <Button size="icon" variant="outline" onClick={() => setUploadDialogOpen(true)} title="上传自定义SVG图标">
+          <Button size="icon" variant="outline" onClick={() => setUploadDialogOpen(true)} title={t('iconPicker.uploadTitle')}>
             +
           </Button>
         </div>
@@ -159,12 +165,12 @@ export const SvgIconPicker: React.FC<SvgIconPickerProps> = ({ value, onChange, c
                   }}
                 >
                   {icon.type === "custom"
-                    ? <CustomSvgIcon content={(icon as any).content} width={36} height={36} className="text-primary" />
-                    : (() => { const HeroIcon = (icon as any).Icon as React.FC<any>; return <HeroIcon className="w-8 h-8" />; })()
+                    ? <CustomSvgIcon content={icon.content} width={36} height={36} className="text-primary" />
+                    : (() => { const HeroIcon = icon.Icon; return <HeroIcon className="w-8 h-8" />; })()
                   }
                 </button>
               ))}
-              {filteredIcons.length === 0 && <div className="col-span-8 text-center text-gray-400 py-4">无匹配图标</div>}
+              {filteredIcons.length === 0 && <div className="col-span-8 text-center text-gray-400 py-4">{t('iconPicker.noMatch')}</div>}
             </div>
           )}
         </div>

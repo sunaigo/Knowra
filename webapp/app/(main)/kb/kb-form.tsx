@@ -17,54 +17,57 @@ import { SvgIconPicker } from "@/components/svg-icon-picker"
 import React from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: "名称至少需2个字符。" }),
-  description: z.string(),
-  team_id: z.coerce.number({ required_error: "必须选择一个团队。" }),
-  chunk_size: z.coerce.number().min(100, { message: "分块大小至少为100。" }),
-  overlap: z.coerce.number().min(0, { message: "重叠部分不能为负数。" }),
-  auto_process_on_upload: z.boolean(),
-  embedding_model_id: z.coerce.number().optional().nullable(),
-  icon_name: z.string().optional(),
-  collection_id: z.coerce.number({ required_error: "必须选择一个 Collection" }).nullable(),
-  oss_connection_id: z.coerce.number().optional().nullable(),
-  oss_bucket: z.string().optional().nullable(),
-})
-
-export type KnowledgeBaseFormValues = z.infer<typeof formSchema>;
-
-interface KnowledgeBaseFormProps {
-  initialData?: Partial<KnowledgeBaseFormValues>;
-  onSubmit: (values: KnowledgeBaseFormValues) => Promise<void>;
+// 在组件外部重新定义 KnowledgeBaseFormProps 类型
+type KnowledgeBaseFormProps = {
+  initialData?: Partial<any>; // 这里先用 any，后续在组件内部用正确类型覆盖
+  onSubmit: (values: any) => Promise<void>;
   isSubmitting?: boolean;
   submitButtonText?: string;
   editingKbId?: number;
-}
+};
 
 export function KnowledgeBaseForm({
   initialData,
   onSubmit,
   isSubmitting = false,
-  submitButtonText = "保存",
+  submitButtonText = "save",
   editingKbId,
 }: KnowledgeBaseFormProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const activeTeamId = useActiveTeamId()
   const userTeams = useTeams()
-  
+  const { t } = useTranslation();
+
+  const formSchema = React.useMemo(() => z.object({
+    name: z.string().min(2, { message: t('kbForm.nameMin') }),
+    description: z.string(),
+    team_id: z.coerce.number({ required_error: t('kbForm.teamRequired') }),
+    chunk_size: z.coerce.number().min(100, { message: t('kbForm.chunkSizeMin') }),
+    overlap: z.coerce.number().min(0, { message: t('kbForm.overlapMin') }),
+    auto_process_on_upload: z.boolean(),
+    embedding_model_id: z.coerce.number().optional().nullable(),
+    icon_name: z.string().optional(),
+    collection_id: z.coerce.number({ required_error: t('kbForm.collectionRequired') }).nullable(),
+    oss_connection_id: z.coerce.number().optional().nullable(),
+    oss_bucket: z.string().optional().nullable(),
+  }), [t]);
+
+  type KnowledgeBaseFormValues = z.infer<typeof formSchema>;
+
   const form = useForm<KnowledgeBaseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: initialData?.name || "",
-      description: initialData?.description || "",
-      team_id: initialData?.team_id || (searchParams.get('team_id') ? Number(searchParams.get('team_id')) : (activeTeamId ? Number(activeTeamId) : undefined)),
-      chunk_size: initialData?.chunk_size || 5000,
-      overlap: initialData?.overlap || 200,
+      name: initialData?.name ?? "",
+      description: initialData?.description ?? "",
+      team_id: initialData?.team_id ?? 0,
+      chunk_size: initialData?.chunk_size ?? 5000,
+      overlap: initialData?.overlap ?? 200,
       auto_process_on_upload: initialData?.auto_process_on_upload ?? true,
       embedding_model_id: initialData?.embedding_model_id ?? null,
-      icon_name: initialData?.icon_name || "DocumentDuplicateIcon",
+      icon_name: initialData?.icon_name ?? "DocumentDuplicateIcon",
       collection_id: initialData?.collection_id ?? null,
       oss_connection_id: initialData?.oss_connection_id ?? null,
       oss_bucket: initialData?.oss_bucket ?? null,
@@ -81,7 +84,7 @@ export function KnowledgeBaseForm({
   }, [activeTeamId, searchParams, form])
 
   // 拉取 embedding 模型列表
-  const [models, setModels] = React.useState<any[]>([])
+  const [models, setModels] = React.useState<EmbeddingModel[]>([])
   const [modelLoading, setModelLoading] = React.useState(false)
   useEffect(() => {
     async function fetchModels() {
@@ -101,7 +104,7 @@ export function KnowledgeBaseForm({
   }, [])
 
   // 拉取团队下所有 VDB
-  const [vdbs, setVdbs] = React.useState<any[]>([])
+  const [vdbs, setVdbs] = React.useState<VDB[]>([])
   useEffect(() => {
     async function fetchVdbs() {
       if (!activeTeamId) return
@@ -127,11 +130,11 @@ export function KnowledgeBaseForm({
   }, [vdbs, initialData?.collection_id, selectedVdbId])
 
   // 组装所有 collection（预加载所有 vdb 下的 collection）
-  const [allCollections, setAllCollections] = React.useState<any[]>([])
+  const [allCollections, setAllCollections] = React.useState<Collection[]>([])
   useEffect(() => {
     async function fetchAllCollections() {
       if (!vdbs || vdbs.length === 0 || !activeTeamId) return
-      let all: any[] = []
+      let all: Collection[] = []
       for (const vdb of vdbs) {
         try {
           // 构建请求 URL，添加 exclude_bound 参数
@@ -169,7 +172,7 @@ export function KnowledgeBaseForm({
   }, [initialData?.collection_id])
 
   // 合并 OSS 连接和 bucket 下拉
-  const [ossConnections, setOssConnections] = React.useState<any[]>([])
+  const [ossConnections, setOssConnections] = React.useState<OSSConnection[]>([])
   const [ossBucketsMap, setOssBucketsMap] = React.useState<Record<number, string[]>>({})
   const [ossLoading, setOssLoading] = React.useState(false)
   const [ossSelectValue, setOssSelectValue] = React.useState<string>("")
@@ -185,7 +188,7 @@ export function KnowledgeBaseForm({
           setOssConnections(res.data)
           // 拉取每个连接的 bucket
           const bucketsMap: Record<number, string[]> = {}
-          await Promise.all(res.data.map(async (conn: any) => {
+          await Promise.all(res.data.map(async (conn: OSSConnection) => {
             try {
               const bRes = await get(`/oss-connection/${conn.id}/buckets`)
               if (bRes && bRes.data) {
@@ -253,13 +256,58 @@ export function KnowledgeBaseForm({
     return () => { ignore = true }
   }, [currentCollectionId])
 
+  // ===== 类型定义（建议后续可单独提取到 types 文件） =====
+  interface EmbeddingModel {
+    id: number
+    model_name: string
+    model_type: 'embedding'
+    description?: string
+    // ...其它字段
+  }
+
+  interface VDB {
+    id: number
+    name: string
+    type: string
+    team_id: number
+    description?: string
+    connection_config: Record<string, unknown>
+    // ...其它字段
+  }
+
+  interface Collection {
+    id: number
+    name: string
+    description?: string
+    vdb_id: number
+    team_id: number
+    owner_id: number
+    created_at: string
+    updated_at: string
+    // ...其它字段
+  }
+
+  interface OSSConnection {
+    id: number
+    name: string
+    type: string
+    config: {
+      endpoint: string;
+      access_key: string;
+      secret_key: string;
+      region?: string;
+    }
+    // ...其它字段
+  }
+  // ===== END 类型定义 =====
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>基本信息</CardTitle>
-            <CardDescription>为您的知识库设置一个清晰的名称和描述。</CardDescription>
+            <CardTitle>{t('knowledgeBase.title')}</CardTitle>
+            <CardDescription>{t('kbForm.basicInfoDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -267,7 +315,7 @@ export function KnowledgeBaseForm({
               name="team_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>所属团队</FormLabel>
+                  <FormLabel>{t('common.team')}</FormLabel>
                   <Select
                     value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                     onValueChange={val => field.onChange(val ? Number(val) : null)}
@@ -275,7 +323,7 @@ export function KnowledgeBaseForm({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="请选择一个团队" />
+                        <SelectValue placeholder={t('kbForm.teamPlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -284,11 +332,11 @@ export function KnowledgeBaseForm({
                           <SelectItem key={team.id} value={String(team.id)}>{team.name}</SelectItem>
                         ))
                       ) : (
-                        <div className="px-2 py-2 text-muted-foreground">您不属于任何团队</div>
+                        <div className="px-2 py-2 text-muted-foreground">{t('kbForm.noTeam')}</div>
                       )}
                     </SelectContent>
                   </Select>
-                  <FormDescription>该知识库将属于您选择的团队。</FormDescription>
+                  <FormDescription>{t('kbForm.teamDesc')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -298,9 +346,9 @@ export function KnowledgeBaseForm({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>知识库名称</FormLabel>
+                  <FormLabel>{t('common.name')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="例如：产品文档" {...field} />
+                    <Input placeholder={t('kbForm.namePlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -311,10 +359,10 @@ export function KnowledgeBaseForm({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>描述</FormLabel>
+                  <FormLabel>{t('common.description')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="简单描述这个知识库的用途"
+                      placeholder={t('kbForm.descriptionPlaceholder')}
                       className="resize-none"
                       {...field}
                     />
@@ -328,7 +376,7 @@ export function KnowledgeBaseForm({
               name="icon_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>知识库图标</FormLabel>
+                  <FormLabel>{t('kbForm.icon')}</FormLabel>
                   <FormControl>
                     <SvgIconPicker
                       value={field.value || ""}
@@ -337,7 +385,7 @@ export function KnowledgeBaseForm({
                       }}
                     />
                   </FormControl>
-                  <FormDescription>为知识库选择一个图标，便于识别。</FormDescription>
+                  <FormDescription>{t('kbForm.iconDesc')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -347,7 +395,7 @@ export function KnowledgeBaseForm({
               name="embedding_model_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>向量模型</FormLabel>
+                  <FormLabel>{t('kbForm.embeddingModel')}</FormLabel>
                   <Select
                     value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                     onValueChange={val => field.onChange(val ? Number(val) : null)}
@@ -355,22 +403,22 @@ export function KnowledgeBaseForm({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={modelLoading ? "加载中..." : "请选择 Embedding 模型"} />
+                        <SelectValue placeholder={modelLoading ? t('common.loading') : t('kbForm.embeddingModelPlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {models && models.length > 0 ? (
-                        models.map((m: any) => (
+                        models.map((m: EmbeddingModel) => (
                           <SelectItem key={m.id} value={String(m.id)}>{m.model_name}</SelectItem>
                         ))
                       ) : modelLoading ? (
-                        <div className="flex items-center px-2 py-2 text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />加载中...</div>
+                        <div className="flex items-center px-2 py-2 text-muted-foreground">{t('common.loading')}</div>
                       ) : (
-                        <div className="px-2 py-2 text-muted-foreground">暂无可用模型</div>
+                        <div className="px-2 py-2 text-muted-foreground">{t('kbForm.noModel')}</div>
                       )}
                     </SelectContent>
                   </Select>
-                  <FormDescription>选择用于文本向量化的 embedding 模型。</FormDescription>
+                  <FormDescription>{t('kbForm.embeddingModelDesc')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -380,11 +428,11 @@ export function KnowledgeBaseForm({
               name="collection_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>向量库</FormLabel>
+                  <FormLabel>{t('kbForm.collection')}</FormLabel>
                   <Select
                     value={field.value !== null && field.value !== undefined ? String(field.value) : ""}
                     onValueChange={val => {
-                      const selectedCollection = allCollections.find((c: any) => String(c.id) === val)
+                      const selectedCollection = allCollections.find((c: Collection) => String(c.id) === val)
                       if (selectedCollection) {
                         setSelectedVdbId(selectedCollection.vdb_id)
                       }
@@ -393,29 +441,29 @@ export function KnowledgeBaseForm({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={vdbs && vdbs.length > 0 ? "请选择 Collection" : "暂无 Collection"} />
+                        <SelectValue placeholder={vdbs && vdbs.length > 0 ? t('kbForm.collectionPlaceholder') : t('kbForm.noCollection')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {vdbs && vdbs.length > 0 ? (
-                        vdbs.map((vdb: any) => {
-                          const groupCollections = allCollections.filter((c: any) => c.vdb_id === vdb.id)
+                        vdbs.map((vdb: VDB) => {
+                          const groupCollections = allCollections.filter((c: Collection) => c.vdb_id === vdb.id)
                           if (groupCollections.length === 0) return null
                           return (
                             <SelectGroup key={vdb.id}>
                               <SelectLabel>{vdb.name}</SelectLabel>
-                              {groupCollections.map((c: any) => (
+                              {groupCollections.map((c: Collection) => (
                                 <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                               ))}
                             </SelectGroup>
                           )
                         })
                       ) : (
-                        <div className="px-2 py-2 text-muted-foreground">暂无可用 Collection</div>
+                        <div className="px-2 py-2 text-muted-foreground">{t('kbForm.noCollection')}</div>
                       )}
                     </SelectContent>
                   </Select>
-                  <FormDescription>请选择知识库要绑定的 Collection。</FormDescription>
+                  <FormDescription>{t('kbForm.collectionDesc')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -426,7 +474,7 @@ export function KnowledgeBaseForm({
               name="oss_connection_id"
               render={() => (
                 <FormItem>
-                  <FormLabel>OSS 存储位置</FormLabel>
+                  <FormLabel>{t('kbForm.oss')}</FormLabel>
                   <Select
                     value={ossSelectValue}
                     onValueChange={val => {
@@ -444,13 +492,13 @@ export function KnowledgeBaseForm({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={ossLoading ? "加载中..." : "请选择 OSS 存储位置（可选）"} />
+                        <SelectValue placeholder={ossLoading ? t('common.loading') : t('kbForm.ossPlaceholder')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="local">本地服务器（默认）</SelectItem>
+                      <SelectItem value="local">{t('kbForm.ossLocal')}</SelectItem>
                       {ossConnections.length > 0 && Object.keys(ossBucketsMap).length > 0 ? (
-                        ossConnections.map((conn: any) => (
+                        ossConnections.map((conn: OSSConnection) => (
                           <SelectGroup key={conn.id}>
                             <SelectLabel>{conn.name}</SelectLabel>
                             {(ossBucketsMap[conn.id] || []).map((b: string) => (
@@ -459,11 +507,11 @@ export function KnowledgeBaseForm({
                           </SelectGroup>
                         ))
                       ) : (
-                        <div className="px-2 py-2 text-muted-foreground">暂无可用 OSS 连接</div>
+                        <div className="px-2 py-2 text-muted-foreground">{t('kbForm.noOSS')}</div>
                       )}
                     </SelectContent>
                   </Select>
-                  <FormDescription>如未选择，文件将存储在本地服务器。</FormDescription>
+                  <FormDescription>{t('kbForm.ossDesc')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -473,10 +521,8 @@ export function KnowledgeBaseForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>文本分割参数</CardTitle>
-            <CardDescription>
-              这些参数将影响文档被处理和分割的方式，以用于RAG检索。
-            </CardDescription>
+            <CardTitle>{t('kbForm.splitParams')}</CardTitle>
+            <CardDescription>{t('kbForm.splitParamsDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -485,12 +531,12 @@ export function KnowledgeBaseForm({
                   name="chunk_size"
                   render={({ field }) => (
                       <FormItem>
-                      <FormLabel>分块大小 (Chunk Size)</FormLabel>
+                      <FormLabel>{t('kbForm.chunkSize')}</FormLabel>
                       <FormControl>
                           <Input type="number" {...field} />
                       </FormControl>
                       <FormDescription>
-                          每个文本块的最大字符数。
+                          {t('kbForm.chunkSizeDesc')}
                       </FormDescription>
                       <FormMessage />
                       </FormItem>
@@ -501,12 +547,12 @@ export function KnowledgeBaseForm({
                   name="overlap"
                   render={({ field }) => (
                       <FormItem>
-                      <FormLabel>重叠部分 (Overlap)</FormLabel>
+                      <FormLabel>{t('kbForm.overlap')}</FormLabel>
                       <FormControl>
                           <Input type="number" {...field} />
                       </FormControl>
                       <FormDescription>
-                          连续文本块之间的重叠字符数。
+                          {t('kbForm.overlapDesc')}
                       </FormDescription>
                       <FormMessage />
                       </FormItem>
@@ -519,10 +565,8 @@ export function KnowledgeBaseForm({
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel>自动处理</FormLabel>
-                    <FormDescription>
-                      开启后，上传文档将自动进入处理队列。
-                    </FormDescription>
+                    <FormLabel>{t('kbForm.autoProcess')}</FormLabel>
+                    <FormDescription>{t('kbForm.autoProcessDesc')}</FormDescription>
                   </div>
                   <FormControl>
                     <Switch
@@ -538,11 +582,11 @@ export function KnowledgeBaseForm({
 
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()}>
-                取消
+                {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {submitButtonText}
+                {t(`common.${submitButtonText}`)}
             </Button>
         </div>
       </form>

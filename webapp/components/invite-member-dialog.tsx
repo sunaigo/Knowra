@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { post } from "@/lib/request"
+import { useTranslation } from 'react-i18next'
 
 import { Button } from "@/components/ui/button"
 import {
@@ -33,11 +34,14 @@ import {
 import { toast } from "sonner"
 import { UserSearchCombobox } from "./user-search-combobox"
 import { UserOut } from "@/schemas/user"
+import { Input } from "@/components/ui/input"
 
-const inviteSchema = z.object({
-  username: z.string().min(1, "用户名不能为空"),
-  role: z.enum(["admin", "member"]),
-})
+export function buildInviteSchema(t: (k: string) => string) {
+  return z.object({
+    username: z.string().min(1, t('inviteMember.usernameRequired')),
+    role: z.enum(["admin", "member"]),
+  })
+}
 
 interface InviteMemberDialogProps {
   teamId: string
@@ -46,9 +50,14 @@ interface InviteMemberDialogProps {
   onInviteSuccess: () => void
 }
 
-type InviteFormValues = z.infer<typeof inviteSchema>
+type InviteFormValues = {
+  username: string;
+  role: "admin" | "member";
+}
 
 export function InviteMemberDialog({ teamId, isOpen, onOpenChange, onInviteSuccess }: InviteMemberDialogProps) {
+  const { t } = useTranslation()
+  const inviteSchema = React.useMemo(() => buildInviteSchema(t), [t])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserOut | null>(null)
 
@@ -67,19 +76,19 @@ export function InviteMemberDialog({ teamId, isOpen, onOpenChange, onInviteSucce
 
   async function onSubmit(values: InviteFormValues) {
     setIsSubmitting(true)
-    const res = await post(`/teams/${teamId}/invite`, values)
+    const res: any = await post(`/teams/${teamId}/invite`, values)
     if (res.code === 200) {
-      toast.success("添加成功！")
+      toast.success(t('inviteMember.addSuccess'))
       onInviteSuccess()
       onOpenChange(false)
       form.reset()
       setSelectedUser(null)
-    } else if (res.code === 400 && res.message?.includes('用户已在团队中')) {
-      toast.error('该用户已是团队成员，无需重复邀请')
-    } else if (res.code === 404 && res.message?.includes('用户不存在')) {
-      toast.error('用户不存在，请检查用户名')
+    } else if (res.code === 400 && res.message?.includes(t('inviteMember.alreadyInTeamRaw'))) {
+      toast.error(t('inviteMember.alreadyInTeam'))
+    } else if (res.code === 404 && res.message?.includes(t('inviteMember.userNotExistRaw'))) {
+      toast.error(t('inviteMember.userNotExist'))
     } else {
-      toast.error(res.message || '添加失败，请重试')
+      toast.error(res.message || t('inviteMember.addFailed'))
     }
     setIsSubmitting(false)
   }
@@ -96,9 +105,9 @@ export function InviteMemberDialog({ teamId, isOpen, onOpenChange, onInviteSucce
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>添加新成员</DialogTitle>
+          <DialogTitle>{t('inviteMember.title')}</DialogTitle>
           <DialogDescription>
-            搜索并选择一个系统内已注册的用户，并为其分配角色。
+            {t('inviteMember.desc')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -108,7 +117,7 @@ export function InviteMemberDialog({ teamId, isOpen, onOpenChange, onInviteSucce
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>用户名</FormLabel>
+                  <FormLabel>{t('inviteMember.username')}</FormLabel>
                   <FormControl>
                     <UserSearchCombobox 
                       selectedUser={selectedUser}
@@ -124,16 +133,16 @@ export function InviteMemberDialog({ teamId, isOpen, onOpenChange, onInviteSucce
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>角色</FormLabel>
+                  <FormLabel>{t('inviteMember.role')}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="选择一个角色" />
+                        <SelectValue placeholder={t('inviteMember.selectRole')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="member">成员 (Member)</SelectItem>
-                      <SelectItem value="admin">管理员 (Admin)</SelectItem>
+                      <SelectItem value="member">{t('inviteMember.member')}</SelectItem>
+                      <SelectItem value="admin">{t('inviteMember.admin')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -142,10 +151,10 @@ export function InviteMemberDialog({ teamId, isOpen, onOpenChange, onInviteSucce
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
-                取消
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "添加中..." : "添加成员"}
+                {isSubmitting ? t('inviteMember.adding') : t('inviteMember.add')}
               </Button>
             </DialogFooter>
           </form>

@@ -20,6 +20,7 @@ import {
 import { get } from "@/lib/request"
 import { UserOut } from "@/schemas/user"
 import { useDebounce } from "use-debounce"
+import { useTranslation } from 'react-i18next'
 
 interface UserSearchComboboxProps {
   selectedUser: UserOut | null
@@ -27,6 +28,7 @@ interface UserSearchComboboxProps {
 }
 
 export function UserSearchCombobox({ selectedUser, onUserSelect }: UserSearchComboboxProps) {
+  const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [debouncedSearchTerm] = useDebounce(searchTerm, 300)
@@ -70,21 +72,21 @@ export function UserSearchCombobox({ selectedUser, onUserSelect }: UserSearchCom
         >
           {selectedUser
             ? selectedUser.username
-            : "搜索并选择一个用户..."}
+            : t('userSearch.searchAndSelect')}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
         <Command>
           <CommandInput
-            placeholder="输入用户名进行搜索..."
+            placeholder={t('userSearch.inputToSearch')}
             value={searchTerm}
             onValueChange={setSearchTerm}
             
           />
           <CommandList>
-            {isLoading && <CommandItem>加载中...</CommandItem>}
-            <CommandEmpty>{!isLoading && "未找到用户。"}</CommandEmpty>
+            {isLoading && <CommandItem>{t('userSearch.loading')}</CommandItem>}
+            <CommandEmpty>{!isLoading && t('userSearch.notFound')}</CommandEmpty>
             <CommandGroup>
               {users.map((user) => (
                 <CommandItem

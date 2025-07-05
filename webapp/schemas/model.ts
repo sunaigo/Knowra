@@ -14,6 +14,14 @@ export const modelSchema = z.object({
   maintainer_id: z.number().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
-});
+  embedding_dim: z.number().nullable().optional(),
+  context_length: z.number().nullable().optional(),
+  max_tokens: z.number().nullable().optional(),
+  temperature: z.number().nullable().optional(),
+  vision_config: z.record(z.unknown()).optional(),
+  extra_config: z.record(z.unknown()).optional(),
+  status: z.string().optional(),
+  maintainer: z.any().optional(),
+}).passthrough()
 
 export type Model = z.infer<typeof modelSchema>; 

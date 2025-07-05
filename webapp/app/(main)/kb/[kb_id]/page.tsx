@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import { File, PlusCircle, MoreHorizontal, Settings, PlayCircle, Eye, Trash2, Edit, Pause, X as XIcon } from "lucide-react"
+import { PlusCircle, MoreHorizontal, Settings, PlayCircle, Eye, Trash2, Edit, X as XIcon } from "lucide-react"
 import * as React from "react"
 import { useTranslation } from "react-i18next"
 import { isEqual } from "lodash"
@@ -34,7 +34,6 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { DocumentSettingsDialog } from "@/components/document-settings-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CustomSvgIcon } from '@/components/custom-svg-icon'
 
 export default function KnowledgeBasePage() {
   const params = useParams()
@@ -60,16 +59,16 @@ export default function KnowledgeBasePage() {
         if (response && response.code === 200 && response.data) {
           setKb(response.data)
         } else {
-          setKbError('获取知识库信息失败')
+          setKbError(t('kb.loadFailed') as string)
         }
-      } catch (err: any) {
-        setKbError(err.message || '获取知识库信息失败')
+      } catch (err) {
+        setKbError(err instanceof Error ? err.message : (t('kb.loadFailed') as string))
       } finally {
         setIsKbLoading(false)
       }
     }
     fetchKb()
-  }, [kb_id])
+  }, [kb_id, t])
 
   // 获取文档列表
   const fetchDocuments = React.useCallback(async () => {
@@ -81,14 +80,14 @@ export default function KnowledgeBasePage() {
       if (response && response.code === 200 && Array.isArray(response.data)) {
         setDocuments(response.data)
       } else {
-        setDocsError('获取文档列表失败')
+        setDocsError(t('kb.docsLoadFailed') as string)
       }
-    } catch (err: any) {
-      setDocsError(err.message || '获取文档列表失败')
+    } catch (err) {
+      setDocsError(err instanceof Error ? err.message : (t('kb.docsLoadFailed') as string))
     } finally {
       setIsDocLoading(false)
     }
-  }, [kb_id])
+  }, [kb_id, t])
 
   useEffect(() => {
     fetchDocuments()
@@ -227,18 +226,15 @@ export default function KnowledgeBasePage() {
       cell: ({ row }) => {
         const doc = row.original
         const isApiProcessing = isProcessing === doc.id || isPausing === doc.id
-        const isDocumentProcessing = doc.status === "processing" || doc.status === "pending"
-        const isButtonDisabled = isApiProcessing || isDeleting
 
         const showPauseButton = doc.status === 'processing' || doc.status === 'pending'
-        const showPlayButton = ['not_started', 'failed', 'paused', 'processed', 'cancelled'].includes(doc.status)
 
         return (
           <div className="flex items-center justify-end gap-2">
             {doc.status === 'paused' ? (
               <Popover open={popoverOpenForDoc === doc.id} onOpenChange={(isOpen) => setPopoverOpenForDoc(isOpen ? doc.id : null)}>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" disabled={isButtonDisabled}>
+                  <Button variant="ghost" size="icon" disabled={isApiProcessing}>
                     <PlayCircle className="h-4 w-4" />
                   </Button>
                 </PopoverTrigger>
@@ -261,7 +257,7 @@ export default function KnowledgeBasePage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => (showPauseButton ? handlePause(doc) : handleProcess(doc))}
-                      disabled={isButtonDisabled}
+                      disabled={isApiProcessing}
                     >
                       {showPauseButton ? <XIcon className="h-4 w-4" /> : <PlayCircle className="h-4 w-4" />}
                     </Button>

@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { CustomSvgIcon } from "@/components/custom-svg-icon";
 import { request } from "@/lib/request";
+import { useTranslation } from 'react-i18next';
+import { toast } from "sonner";
 
 interface SvgUploadDialogProps {
   open: boolean;
@@ -20,6 +22,7 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
   const [loading, setLoading] = useState(false);
   const [svgContent, setSvgContent] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
 
   const validateName = (name: string) => /^[a-zA-Z0-9_-]+$/.test(name);
 
@@ -49,8 +52,8 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
     const f = e.target.files?.[0] || null;
     setFile(f);
     if (f) {
-      let rawName = f.name.replace(/\.svg$/i, "");
-      let validName = rawName.replace(/[^a-zA-Z0-9_-]/g, "");
+      const rawName = f.name.replace(/\.svg$/i, "");
+      const validName = rawName.replace(/[^a-zA-Z0-9_-]/g, "");
       setName(validName);
       const reader = new FileReader();
       reader.onload = evt => {
@@ -69,23 +72,23 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
     setError("");
     e.stopPropagation();
     if (!validateName(name)) {
-      setError("图标名不合法，仅支持英文、数字、下划线和-");
+      setError(t('svg.invalidName'));
       return;
     }
     if (allIconNames.includes(name)) {
-      setError("图标名已存在");
+      setError(t('svg.nameExists'));
       return;
     }
     if (!file) {
-      setError("请选择SVG文件");
+      setError(t('svg.selectFile'));
       return;
     }
     if (file.size > 16 * 1024) {
-      setError("SVG文件不能超过16KB");
+      setError(t('svg.fileTooLarge'));
       return;
     }
     if (!svgContent) {
-      setError("无法读取SVG文件内容或内容无效");
+      setError(t('svg.invalidContent'));
       return;
     }
     setLoading(true);
@@ -100,8 +103,15 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
       setName("");
       setFile(null);
       setSvgContent("");
-    } catch (err: any) {
-      setError(err.message || "上传失败");
+      toast.success(t('svg.uploadSuccess'));
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || t('svg.uploadFailed'));
+        toast.error(err.message || t('svg.uploadFailed'));
+      } else {
+        setError(t('svg.uploadFailed'));
+        toast.error(t('svg.uploadFailed'));
+      }
     } finally {
       setLoading(false);
     }
@@ -111,18 +121,16 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>上传自定义SVG图标</DialogTitle>
-          <DialogDescription className="text-muted-foreground text-xs mt-1">
-            图标名需唯一，仅支持英文、数字、下划线和-，SVG文件≤16KB。
-          </DialogDescription>
+          <DialogTitle>{t('svg.uploadTitle')}</DialogTitle>
+          <DialogDescription>{t('svg.uploadDesc')}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">SVG 文件</label>
+            <label className="text-sm font-medium text-foreground">{t('svg.fileLabel')}</label>
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <Button type="button" variant="outline" className="w-full justify-start text-muted-foreground font-normal" onClick={() => fileInputRef.current?.click()}>
-                  {file ? file.name : "选择文件"}
+                  {file ? file.name : t('svg.selectFileButton')}
                 </Button>
                 <Input
                   ref={fileInputRef}
@@ -143,7 +151,7 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
             {file && <p className="text-xs text-muted-foreground mt-2">{file.name} ({(file.size / 1024).toFixed(1)} KB)</p>}
           </div>
           <div className="space-y-2">
-            <label htmlFor="icon-name" className="text-sm font-medium text-foreground">图标英文名</label>
+            <label htmlFor="icon-name" className="text-sm font-medium text-foreground">{t('svg.nameLabel')}</label>
             <Input
               id="icon-name"
               value={name}
@@ -156,7 +164,7 @@ export const SvgUploadDialog: React.FC<SvgUploadDialogProps> = ({ open, onOpenCh
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={loading || !name || !file} className="w-full">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            上传自定义SVG
+            {t('svg.uploadButton')}
           </Button>
         </form>
       </DialogContent>

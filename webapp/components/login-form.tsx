@@ -43,16 +43,16 @@ export function LoginForm({
     setLoading(true)
     setError("")
     try {
-      const data = await post("/users/login", { username, password }, { form: true })
+      const data = await post<{ code: number; data?: { access_token?: string }; message?: string }>("/users/login", { username, password }, { form: true })
       if (data.code === 200 && data.data?.access_token) {
         localStorage.setItem("token", data.data.access_token)
         // 登录成功后不再主动获取用户信息，交由 layout 处理
         router.replace("/")
       } else {
-        setError(data.message || t('login_failed'))
+        setError(data.message || t('login.login_failed'))
       }
-    } catch (err: any) {
-      setError(err.message || t('network_error'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('login.network_error'))
     } finally {
       setLoading(false)
     }
@@ -63,12 +63,12 @@ export function LoginForm({
     setRegLoading(true)
     setRegError("")
     if (!regUsername.trim() || !regPassword.trim()) {
-      setRegError(t('register_required'))
+      setRegError(t('register.register_required'))
       setRegLoading(false)
       return
     }
     try {
-      const data = await post("/users/register", { username: regUsername, password: regPassword, email: regEmail })
+      const data = await post<{ code: number; message?: string }>("/users/register", { username: regUsername, password: regPassword, email: regEmail })
       if (data.code === 200) {
         setIsRegister(false)
         setUsername(regUsername)
@@ -78,10 +78,10 @@ export function LoginForm({
         setRegEmail("")
         setRegError("")
       } else {
-        setRegError(data.message || t('register_failed'))
+        setRegError(data.message || t('register.register_failed'))
       }
-    } catch (err: any) {
-      setRegError(err.message || t('network_error'))
+    } catch (err) {
+      setRegError(err instanceof Error ? err.message : t('login.network_error'))
     } finally {
       setRegLoading(false)
     }
@@ -105,20 +105,20 @@ export function LoginForm({
             >
               <Card className="w-full flex flex-col justify-center">
                 <CardHeader>
-                  <CardTitle>{t('login_title')}</CardTitle>
+                  <CardTitle>{t('login.title')}</CardTitle>
                   <CardDescription>
-                    {t('login_desc')}
+                    {t('login.desc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleLogin}>
                     <div className="flex flex-col gap-6">
                       <div className="grid gap-3">
-                        <Label htmlFor="username">{t('username')}</Label>
+                        <Label htmlFor="username">{t('login.username')}</Label>
                         <Input
                           id="username"
                           type="text"
-                          placeholder={t('username_placeholder')}
+                          placeholder={t('login.username_placeholder')}
                           required
                           value={username}
                           onChange={e => setUsername(e.target.value)}
@@ -126,19 +126,19 @@ export function LoginForm({
                       </div>
                       <div className="grid gap-3">
                         <div className="flex items-center">
-                          <Label htmlFor="password">{t('password')}</Label>
+                          <Label htmlFor="password">{t('login.password')}</Label>
                           <a
                             href="#"
                             className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
                           >
-                            {t('forgot_password')}
+                            {t('login.forgot_password')}
                           </a>
                         </div>
                         <Input
                           id="password"
                           type="password"
                           required
-                          placeholder={t('password_placeholder')}
+                          placeholder={t('login.password_placeholder')}
                           value={password}
                           onChange={e => setPassword(e.target.value)}
                         />
@@ -148,14 +148,14 @@ export function LoginForm({
                           <div className="text-red-500 text-sm text-center">{error}</div>
                         )}
                         <Button type="submit" className="w-full" disabled={loading}>
-                          {loading ? t('logging_in') : t('login')}
+                          {loading ? t('login.logging_in') : t('login.login_button')}
                         </Button>
                       </div>
                     </div>
                     <div className="mt-4 text-center text-sm">
-                      {t('no_account')} {" "}
+                      {t('login.no_account')} {" "}
                       <a href="#" className="underline underline-offset-4" onClick={e => { e.preventDefault(); setIsRegister(true) }}>
-                        {t('sign_up')}
+                        {t('login.sign_up')}
                       </a>
                     </div>
                   </form>
@@ -169,42 +169,42 @@ export function LoginForm({
             >
               <Card className="w-full flex flex-col justify-center">
                 <CardHeader>
-                  <CardTitle>{t('register_title')}</CardTitle>
+                  <CardTitle>{t('register.title')}</CardTitle>
                   <CardDescription>
-                    {t('register_desc')}
+                    {t('register.desc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleRegister}>
                     <div className="flex flex-col gap-6">
                       <div className="grid gap-3">
-                        <Label htmlFor="reg-username">{t('username')}</Label>
+                        <Label htmlFor="reg-username">{t('register.username')}</Label>
                         <Input
                           id="reg-username"
                           type="text"
-                          placeholder={t('username_placeholder')}
+                          placeholder={t('register.username_placeholder')}
                           required
                           value={regUsername}
                           onChange={e => setRegUsername(e.target.value)}
                         />
                       </div>
                       <div className="grid gap-3">
-                        <Label htmlFor="reg-password">{t('password')}</Label>
+                        <Label htmlFor="reg-password">{t('register.password')}</Label>
                         <Input
                           id="reg-password"
                           type="password"
                           required
-                          placeholder={t('password_placeholder')}
+                          placeholder={t('register.password_placeholder')}
                           value={regPassword}
                           onChange={e => setRegPassword(e.target.value)}
                         />
                       </div>
                       <div className="grid gap-3">
-                        <Label htmlFor="reg-email">{t('email')}</Label>
+                        <Label htmlFor="reg-email">{t('register.email')}</Label>
                         <Input
                           id="reg-email"
                           type="email"
-                          placeholder={t('email_placeholder')}
+                          placeholder={t('register.email_placeholder')}
                           value={regEmail}
                           onChange={e => setRegEmail(e.target.value)}
                         />
@@ -214,14 +214,14 @@ export function LoginForm({
                           <div className="text-red-500 text-sm text-center">{regError}</div>
                         )}
                         <Button type="submit" className="w-full" disabled={regLoading}>
-                          {regLoading ? t('registering') : t('register')}
+                          {regLoading ? t('register.registering') : t('register.register')}
                         </Button>
                       </div>
                     </div>
                     <div className="mt-4 text-center text-sm">
-                      {t('have_account')} {" "}
+                      {t('register.have_account')} {" "}
                       <a href="#" className="underline underline-offset-4" onClick={e => { e.preventDefault(); setIsRegister(false) }}>
-                        {t('login')}
+                        {t('login.login_button')}
                       </a>
                     </div>
                   </form>

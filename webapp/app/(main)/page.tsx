@@ -1,3 +1,8 @@
+"use client"
+
+import { useTranslation } from 'react-i18next';
+
 export default function Home() {
-  return <div>欢迎来到首页！这里是主内容区。</div>;
+  const { t } = useTranslation();
+  return <div>{t('home.welcome')}</div>;
 } 
