@@ -48,15 +48,15 @@
 ---
 
 ## Architecture
-```mermaid
-graph TD
-  A[Web Frontend (Next.js)] -- REST API --> B[Backend API (FastAPI)]
-  B -- DB Access --> C[(SQLite)]
-  B -- Task Queue --> D[Worker (Celery)]
-  B -- File Storage --> E[OSS]
-  B -- Vector DB --> F[Chroma/Milvus/PGVector]
-  D -- Model Inference --> G[OpenAI/Ollama/Xinference]
-```
+The system architecture is as follows:
+
+- Web Frontend（Next.js）：为用户提供交互界面，通过 REST API 与后端通信。
+- Backend API（FastAPI）：处理业务逻辑，负责用户、文档、权限、检索等服务。
+- Database（SQLite）：存储结构化数据。
+- Worker（Celery）：异步处理文档解析、向量生成等任务。
+- OSS（对象存储）：用于存储大文件和文档原件。
+- Vector Database（Chroma/Milvus/PGVector）：存储和检索向量化数据。
+- Model Inference（OpenAI/Ollama/Xinference）：提供模型推理能力。
 
 ---
 

@@ -48,15 +48,15 @@
 ---
 
 ## 架构图
-```mermaid
-graph TD
-  A[Web 前端 (Next.js)] -- REST API --> B[后端 API (FastAPI)]
-  B -- 数据库访问 --> C[(SQLite)]
-  B -- 任务队列 --> D[Worker (Celery)]
-  B -- 文件存储 --> E[OSS]
-  B -- 向量数据库 --> F[Chroma/Milvus/PGVector]
-  D -- 模型推理 --> G[OpenAI/Ollama/Xinference]
-```
+系统架构如下：
+
+- Web 前端（Next.js）：为用户提供交互界面，通过 REST API 与后端通信。
+- 后端 API（FastAPI）：处理业务逻辑，负责用户、文档、权限、检索等服务。
+- 数据库（SQLite）：存储结构化数据。
+- Worker（Celery）：异步处理文档解析、向量生成等任务。
+- OSS（对象存储）：用于存储大文件和文档原件。
+- 向量数据库（Chroma/Milvus/PGVector）：存储和检索向量化数据。
+- 模型推理（OpenAI/Ollama/Xinference）：提供模型推理能力。
 
 ---
 
