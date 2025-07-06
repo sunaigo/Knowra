@@ -1,7 +1,26 @@
 # Knowra
 
 <p align="center">
-  <img src="webapp/public/knowra.svg" alt="Knowra Logo" width="120" />
+  <img src="knowra.svg" alt="Knowra Logo" width="120" />
+</p>
+
+<p align="center">
+  <b>Modern Knowledge Management & Retrieval System</b>
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> |
+  <a href="README_zh.md">简体中文</a> |
+  <a href="#">繁體中文</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sunaigo/Knowra/stargazers"><img src="https://img.shields.io/github/stars/sunaigo/Knowra?style=flat-square" alt="Stars"/></a>
+  <a href="https://github.com/sunaigo/Knowra/issues"><img src="https://img.shields.io/github/issues/sunaigo/Knowra?style=flat-square" alt="Issues"/></a>
+  <a href="#"><img src="https://img.shields.io/badge/demo-online-blue?style=flat-square" alt="Demo"/></a>
+  <a href="https://hub.docker.com/r/sunaigo/knowra"><img src="https://img.shields.io/docker/pulls/sunaigo/knowra?style=flat-square" alt="Docker Pulls"/></a>
+  <a href="https://github.com/sunaigo/Knowra/releases"><img src="https://img.shields.io/github/v/release/sunaigo/Knowra?style=flat-square" alt="Release"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square" alt="License"/></a>
 </p>
 
 <p align="center">
