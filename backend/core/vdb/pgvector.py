@@ -69,6 +69,9 @@ class PostgreSQLVectorDB(VectorDB):
     def similarity_search_with_score(self, query: str, k: int = 4, **kwargs) -> List[tuple[Document, float]]:
         return self._client.similarity_search_with_score(query, k=k, **kwargs)
 
+    def similarity_search_with_relevance_scores(self, query: str, k: int = 4, **kwargs) -> list[tuple[Document, float]]:
+        return self._client.similarity_search_with_relevance_scores(query, k=k, **kwargs)
+
     # TODO: where删除可优化
     def delete(self, ids: list = None, where: dict = None):
         """
@@ -99,4 +102,4 @@ class PostgreSQLVectorDB(VectorDB):
 
     @classmethod
     def from_documents(cls, documents, embedding, **kwargs):
-        raise NotImplementedError("from_documents not implemented for this VDB") 
+        raise NotImplementedError("from_documents not implemented for this VDB")

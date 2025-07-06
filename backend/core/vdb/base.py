@@ -71,6 +71,9 @@ class VectorDB(VectorStore, ABC):
 
     def as_retriever(self, **kwargs):
         raise NotImplementedError("as_retriever not supported for this VDB")
+    
+    def as_retriever_with_score(self, search_type: str = "similarity", search_kwargs: Optional[Dict[str, Any]] = None):
+        raise NotImplementedError("as_retriever_with_score not supported for this VDB")
 
     # 高级功能
     def max_marginal_relevance_search(self, query: str, k: int = 4, fetch_k: int = 20, lambda_mult: float = 0.5, **kwargs) -> List[Document]:
@@ -86,4 +89,7 @@ class VectorDB(VectorStore, ABC):
         raise NotImplementedError("update_document not supported for this VDB")
 
     def pagination(self, query: str, page: int = 1, page_size: int = 10, **kwargs) -> Dict[str, Any]:
-        raise NotImplementedError("pagination not supported for this VDB") 
+        raise NotImplementedError("pagination not supported for this VDB")
+
+    def similarity_search_with_relevance_scores(self, query: str, k: int = 4, **kwargs) -> list[tuple[Document, float]]:
+        raise NotImplementedError("similarity_search_with_relevance_scores not supported for this VDB") 
