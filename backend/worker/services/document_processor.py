@@ -4,12 +4,12 @@ import asyncio
 from typing import Dict, Any, Optional, Iterator, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from loguru import logger
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from common.schemas.worker import ParseFileTaskParams, ChunkMetadata, VectorDBCollectionConfig
-from core.embedder.factory import EmbedderFactory
+from core.model import ModelFactory
 from core.vdb.factory import VectorDBFactory
 from worker.services.file_manager import FileManager
-from worker.services.parsing_service import ParsingService
 from worker.managers.task_state_manager import TaskStateManager
 from common.schemas.worker import TaskState
 from worker.managers.progress_manager import ProgressManager
@@ -18,6 +18,10 @@ from worker.exceptions.worker_exceptions import (
     WorkerBaseException, ValidationException, TaskCancelledException
 )
 from worker.utils.worker_utils import performance_monitor, validate_task_params
+from core.file_parser import TextFileParser, WordFileParser
+from core.file_parser.base_parser import ChunkParams
+from common.schemas.model import ModelConfig
+from common.core.encryption import decrypt_api_key
 
 
 class DocumentProcessor:
@@ -26,7 +30,6 @@ class DocumentProcessor:
     def __init__(self):
         self.resource_manager = ResourceManager()
         self.file_manager = FileManager(self.resource_manager)
-        self.parsing_service = ParsingService()
         self.task_state_manager = TaskStateManager()
         self.progress_manager = ProgressManager()
         self.last_vdb = None
@@ -62,13 +65,9 @@ class DocumentProcessor:
                 logger.info(f"[{task_id}] 开始下载文件: {params.file.path}")
                 local_file_path = self._download_file(params)
                 
-                # 4. 文本解析
-                logger.info(f"[{task_id}] 开始解析文件: {local_file_path}")
-                text = self._parse_file(params, local_file_path)
-                
-                # 5. 流式处理：边切块边embedding边入库
+                # 4. 流式处理：边切块边embedding边入库
                 logger.info(f"[{task_id}] 开始流式处理：分块->向量化->存储")
-                total_chunks, processed_chunks = self._stream_process_chunks(params, text)
+                total_chunks, processed_chunks = self._stream_process_chunks(params, local_file_path)
                 
                 # 6. 完成处理
                 result = self._finalize_processing(params, local_file_path, total_chunks, processed_chunks)
@@ -94,21 +93,17 @@ class DocumentProcessor:
     
     def _validate_params(self, params: ParseFileTaskParams) -> None:
         """验证任务参数"""
-        # 基础参数验证
         if not validate_task_params(params.model_dump()):
-            raise ValidationException("任务参数验证失败")
-        
+            raise ValidationException("参数验证失败")
         # 文件类型验证
-        if not self.parsing_service.is_type_supported(params.file.type):
+        file_type = params.file.type.lower().strip()
+        if file_type not in ["txt", "md", "docx"]:
             raise ValidationException(f"不支持的文件类型: {params.file.type}")
-        
         # 分块参数验证
-        if not self.parsing_service.validate_chunk_params(
-            params.parse_params.chunk_size,
-            params.parse_params.overlap
-        ):
+        chunk_size = params.parse_params.chunk_size
+        overlap = params.parse_params.overlap
+        if chunk_size <= 0 or overlap < 0 or overlap >= chunk_size:
             raise ValidationException("分块参数无效")
-        
         logger.debug(f"[{params.task_id}] 参数验证通过")
     
     def _download_file(self, params: ParseFileTaskParams) -> str:
@@ -130,39 +125,12 @@ class DocumentProcessor:
             logger.error(f"[{params.task_id}] 文件下载失败: {e}")
             raise
     
-    def _parse_file(self, params: ParseFileTaskParams, local_file_path: str) -> str:
-        """解析文件"""
-        try:
-            # 检查任务是否被取消
-            self.task_state_manager.check_task_cancellation(params.task_id)
-            
-            # 解析文件
-            text = self.parsing_service.parse_file(local_file_path, params.file.type)
-            
-            # 获取文本统计信息
-            text_stats = self.parsing_service.get_text_stats(text)
-            logger.info(f"[{params.task_id}] 文本解析完成: {text_stats}")
-            
-            return text
-            
-        except Exception as e:
-            logger.error(f"[{params.task_id}] 文本解析失败: {e}")
-            raise
-    
-    def _stream_process_chunks(self, params: ParseFileTaskParams, text: str) -> tuple:
-        """
-        流式处理分块：边切块边embedding边入库
-        
-        Args:
-            params: 任务参数
-            text: 解析后的文本
-            
-        Returns:
-            (总分块数, 已处理分块数)
-        """
+    def _stream_process_chunks(self, params: ParseFileTaskParams, local_file_path: str) -> tuple:
         try:
             self.task_state_manager.check_task_cancellation(params.task_id)
-            embedder = EmbedderFactory.create(params.embedding.model_dump())
+            embedder_config = params.embedding.model_dump()
+            embedder_config['model_type'] = 'embedding'
+            embedder = ModelFactory.create(ModelConfig(**embedder_config))
             vdb_config = VectorDBCollectionConfig(
                 collection_name=params.vdb.collection_name,
                 type=params.vdb.type,
@@ -175,34 +143,47 @@ class DocumentProcessor:
             if not vdb.is_connected:
                 asyncio.run(vdb.connect())
             self._delete_existing_chunks(int(params.doc_id) if params.doc_id else 0, vdb)
-            estimated_chunks = self.parsing_service.estimate_chunk_count(
-                text, 
-                params.parse_params.chunk_size, 
-                params.parse_params.overlap
-            )
-            logger.info(f"[{params.task_id}] 估算分块数: {estimated_chunks}")
+
+            file_type = params.file.type.lower().strip()
             doc_id = int(params.doc_id) if params.doc_id else None
+            estimated_chunks = 0  # TODO: 优化分块总数统计，当前不预先估算，直接传0
+            logger.info(f"[{params.task_id}] 估算分块数: {estimated_chunks}")
             if doc_id is not None:
                 self.progress_manager.send_progress_callback(doc_id, "processing", current_offset=0, chunk_count=estimated_chunks)
-            chunk_iterator = self.parsing_service.chunk_text(
-                text,
-                params.file.type,
-                params.parse_params.chunk_size,
-                params.parse_params.overlap
-            )
-            total_chunks, processed_chunks = self._process_chunks_streaming(
-                params, chunk_iterator, embedder, vdb, estimated_chunks, doc_id
+
+            if file_type in ["txt", "md"]:
+                parser = TextFileParser()
+                chunk_params = ChunkParams(chunk_size=params.parse_params.chunk_size, overlap=params.parse_params.overlap)
+                chunk_iter = parser.parse_to_text_chunks_lazy(file_path=local_file_path, chunk_params=chunk_params)
+                def chunk_with_index():
+                    for idx, chunk in enumerate(chunk_iter):
+                        yield idx, chunk, "text", {}
+            elif file_type == "docx":
+                parser = WordFileParser(vision_model=None)
+                parsed_iter = parser.parse_file_lazy(file_path=local_file_path)
+                def chunk_with_index():
+                    for idx, parsed in enumerate(parsed_iter):
+                        if hasattr(parsed, "type") and parsed.type == "image":
+                            # 图片描述文本也embedding+入库，元数据一并存储
+                            yield idx, parsed.content, "image", parsed.metadata
+                        else:
+                            yield idx, parsed.content, "text", getattr(parsed, "metadata", {})
+            else:
+                raise ValidationException(f"Unsupported file type: {file_type}")
+
+            total_chunks, processed_chunks = self._process_chunks_streaming_v2(
+                params, chunk_with_index(), embedder, vdb, estimated_chunks, doc_id
             )
             logger.info(f"[{params.task_id}] 流式处理完成: {processed_chunks}/{total_chunks}")
             return total_chunks, processed_chunks
         except Exception as e:
             logger.error(f"[{params.task_id}] 流式处理失败: {e}")
             raise
-    
-    def _process_chunks_streaming(
+
+    def _process_chunks_streaming_v2(
         self, 
         params: ParseFileTaskParams, 
-        chunk_iterator: Iterator[Tuple[int, str]], 
+        chunk_iterator, 
         embedder, 
         vdb, 
         estimated_chunks: int,
@@ -212,20 +193,23 @@ class DocumentProcessor:
         processed_chunks = 0
         start_offset = params.parse_offset or 0
         parallel_workers = params.parallel or 3
-        chunk_batch = []
         batch_size = parallel_workers * 2
+        from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=parallel_workers) as executor:
             futures = []
             try:
-                for chunk_idx, chunk_text in chunk_iterator:
+                for chunk_idx, chunk_text, chunk_type, metadata in chunk_iterator:
                     self.task_state_manager.check_task_cancellation(params.task_id)
                     total_chunks += 1
                     if chunk_idx < start_offset:
                         continue
-                    metadata = self._create_chunk_metadata(params, chunk_idx, chunk_text)
+                    # 合并元数据
+                    chunk_metadata = self._create_chunk_metadata(params, chunk_idx, chunk_text)
+                    if metadata:
+                        chunk_metadata.update(metadata)
                     future = executor.submit(
                         self._process_single_chunk,
-                        chunk_text, metadata, embedder, vdb
+                        chunk_text, chunk_metadata, embedder, vdb
                     )
                     futures.append((chunk_idx, future))
                     if len(futures) >= batch_size:
