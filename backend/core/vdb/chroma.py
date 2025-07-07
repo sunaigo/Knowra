@@ -6,66 +6,6 @@ from common.schemas.worker import VectorDBCollectionConfig
 from typing import List, Dict, Any, Optional
 from loguru import logger
 
-
-from langchain_core.retrievers import BaseRetriever
-
-
-class ChromaRetrieverWithScore(BaseRetriever):
-    def __init__(
-        self,
-        vectorstore: "ChromaVectorDB",
-        search_type: str = "similarity",
-        search_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        self._vectorstore = vectorstore
-        self._search_type = search_type
-        self._search_kwargs = search_kwargs or {"k": 4}
-
-    @property
-    def vectorstore(self):
-        return self._vectorstore
-
-    @property
-    def search_type(self):
-        return self._search_type
-
-    @search_type.setter
-    def search_type(self, value):
-        self._search_type = value
-
-    @property
-    def search_kwargs(self):
-        return self._search_kwargs
-
-    @search_kwargs.setter
-    def search_kwargs(self, value):
-        self._search_kwargs = value
-
-    @property
-    def tags(self):
-        return []
-    
-
-    def _get_relevant_documents(self, query: str) -> List[Document]:
-        if self.search_type == "similarity":
-            results = self.vectorstore.similarity_search_with_relevance_scores(query, **self.search_kwargs)
-        elif self.search_type == "mmr":
-            # MMR 不返回分数，因此只能构造空分数（或跳过）
-            docs = self.vectorstore.max_marginal_relevance_search(query, **self.search_kwargs)
-            for doc in docs:
-                doc.metadata["relevance_score"] = None  # 标记为无分数
-            return docs
-        else:
-            raise ValueError(f"Unsupported search_type: {self.search_type}")
-
-        # 添加分数到 metadata
-        return [
-            Document(page_content=doc.page_content, metadata={**doc.metadata, "relevance_score": score})
-            for doc, score in results
-        ]
-
-
-
 class ChromaVectorDB(VectorDB):
     def __init__(self, embedding_function: Embeddings, config: VectorDBCollectionConfig):
         super().__init__(embedding_function, config)
@@ -79,8 +19,7 @@ class ChromaVectorDB(VectorDB):
         self._client = Chroma(
             collection_name=collection_name,
             persist_directory=persist_dir,
-            embedding_function=self.embedding_function,
-            collection_metadata={"hnsw:space": "cosine"}
+            embedding_function=self.embedding_function
         )
         logger.info('vdb connect')
         self.is_connected = True
@@ -159,20 +98,6 @@ class ChromaVectorDB(VectorDB):
 
     def similarity_search_with_relevance_scores(self, query: str, k: int = 4, **kwargs) -> list[tuple[Document, float]]:
         return self._client.similarity_search_with_relevance_scores(query, k=k, **kwargs)
-    
-
-    # TODO：暂不支持向量格式输入
-    def as_retriever_with_score(self, search_type: str = "similarity", search_kwargs: Optional[Dict[str, Any]] = None):
-        """
-        返回一个带 relevance_score 的 retriever。
-        支持 search_type = "similarity"（带分数）或 "mmr"（无分数）。
-        支持传入 filter、k、lambda_mult 等参数。
-        """
-        return ChromaRetrieverWithScore(
-            vectorstore=self,
-            search_type=search_type,
-            search_kwargs=search_kwargs
-        )
 
 
     @classmethod

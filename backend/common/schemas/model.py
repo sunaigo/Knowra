@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, AliasChoices
-from typing import Optional, Any, Literal
+from typing import Optional, Any, Literal, Dict
 from datetime import datetime
 from common.schemas.user import UserOut
 from common.schemas.connection import ConnectionOut
@@ -49,4 +49,13 @@ class ModelOut(ModelBase):
     is_default: bool
     status: str
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+# 通用模型配置实体
+class ModelConfig(BaseModel):
+    model_name: str
+    model_type: str  # 'llm'/'embedding'/'vision' 等
+    provider: str
+    api_base: str
+    api_key: Optional[str] = None
+    extra_config: Optional[Dict[str, Any]] = None  # 额外模型参数 

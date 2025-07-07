@@ -46,7 +46,10 @@ class OSSParams(BaseModel):
     region: Optional[str] = None
 
 class EmbeddingParams(BaseModel):
+    api_base: str
+    api_key: str
     model_name: str
+    model_type: str
     embedding_dim: int
     provider: str
 

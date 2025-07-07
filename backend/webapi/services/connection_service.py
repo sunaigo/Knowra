@@ -1,4 +1,3 @@
-import logging
 from sqlalchemy.orm import Session
 from common.db.models import Connection
 from common.schemas.connection import ConnectionCreate, ConnectionUpdate, ConnectionTest, ConnectionConfig
@@ -11,7 +10,7 @@ from openai import OpenAI
 from xinference_client import client as Xinference
 import traceback
 
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 def create_connection(db: Session, conn_in: ConnectionCreate, maintainer_id: int) -> Connection:
     encrypted_api_key = encrypt_api_key(conn_in.api_key) if conn_in.api_key else None
@@ -82,7 +81,9 @@ def _test_connection_logic(provider: str, config: ConnectionConfig, model_name: 
                 raise ValueError("OpenAI provider requires an API key.")
             client = OpenAI(api_key=config.api_key, base_url=config.base_url)
             if model_name:
-                client.models.retrieve(model_name)
+                models = client.models.list()
+                if not any(m.id == model_name for m in models.data):
+                    raise ValueError(f"Model '{model_name}' not found in models list.")
             else:
                 client.models.list()
         elif provider == 'xinference':

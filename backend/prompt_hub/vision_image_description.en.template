@@ -1,0 +1,21 @@
+{
+  "type": "chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert in knowledge extraction. I will provide you with an image extracted from a Word document and its related context. Please:\n\n1. Understand the image content and output the core information it conveys;\n2. If there are charts, structures, or processes, describe them structurally using professional terminology;\n3. Do not describe the image itself (e.g., 'this is a picture'), but rather the knowledge it contains;\n4. Use a concise, accurate style suitable for a QA system;\n\nImage content:\n{image_description}\n\nContext:\n{context}\n\nPlease output the knowledge points contained in this image."
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image",
+          "source_type": "base64",
+          "mime_type": "{image_mime_type}",
+          "data": "{image_data}",
+          "cache_control": {"type": "{cache_type}"}
+        }
+      ]
+    }
+  ]
+} 

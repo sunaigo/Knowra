@@ -1,4 +1,4 @@
-from core.embedder.base import Embedder
+from core.model.embedder.base import Embedder
 from .openai import OpenAIEmbedder
 from .ollama import OllamaEmbedder
 from .xinference import XinferenceEmbedder

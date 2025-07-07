@@ -1,0 +1,21 @@
+{
+  "type": "chat",
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是一个知识抽取专家，接下来我会给你一张从 Word 文档中提取的图片及其相关上下文，请你：\n\n1. 理解图片内容，输出该图片表达的核心信息；\n2. 如果有图表、结构、流程等，请用专业术语进行结构化描述；\n3. 不要描述图像本身（比如'这是一张图'），而是描述它包含的知识；\n4. 使用简洁、准确、可用于问答系统的风格；\n\n图片内容：\n{image_description}\n\n上下文：\n{context}\n\n请输出这张图包含的知识点。"
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image",
+          "source_type": "base64",
+          "mime_type": "{image_mime_type}",
+          "data": "{image_data}",
+          "cache_control": {"type": "{cache_type}"}
+        }
+      ]
+    }
+  ]
+} 

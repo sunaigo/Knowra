@@ -145,3 +145,4 @@ pymilvus
 loguru
 celery[redis]
 langchain-ollama
+python-docx

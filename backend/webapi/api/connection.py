@@ -59,7 +59,20 @@ def test_connection(
         raise HTTPException(status_code=400, detail=f"Connection test failed: {e}")
 
 @router.post("/{id}/test", response_model=BaseResponse)
-def test_connection_by_id(
+def test_connection_by_id_post(
+    id: int,
+    body: dict = Body(...),
+    db: Session = Depends(get_db),
+):
+    model_name = body.get("model_name")
+    try:
+        connection_service.test_connection_by_id(db, id, model_name)
+        return BaseResponse(message="Connection test successful")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Connection test failed: {e}")
+
+@router.get("/{id}/test", response_model=BaseResponse)
+def test_connection_by_id_get(
     id: int,
     db: Session = Depends(get_db),
     model_name: str = Query(None, description="The name of the model to test"),

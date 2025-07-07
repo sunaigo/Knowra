@@ -38,7 +38,10 @@ def dispatch_document_parse_task(doc_id: int):
                     if embedding_dim is None:
                         embedding_dim = -1
                     embedding_params = EmbeddingParams(
+                        api_base=conn.api_base,
+                        api_key=encrypt_api_key(conn.api_key),
                         model_name=model.model_name,
+                        model_type='embedding',
                         embedding_dim=embedding_dim,
                         provider=conn.provider
                     )

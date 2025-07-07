@@ -24,7 +24,7 @@ class ConnectionUpdate(ConnectionCreate):
 
 class ConnectionConfig(BaseModel):
     base_url: str
-    api_key: Optional[SecretStr] = None
+    api_key: Optional[str] = None
 
 
 class ConnectionTest(BaseModel):

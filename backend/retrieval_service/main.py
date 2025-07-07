@@ -8,7 +8,7 @@ from common.db.models import KnowledgeBase, VDBCollection, VDB, Model
 from common.schemas.knowledge_base import KnowledgeBaseOut
 from common.schemas.response import ListResponse, BaseResponse
 from core.vdb.factory import VectorDBFactory
-from core.embedder.factory import EmbedderFactory
+from core.model.embedder.factory import EmbedderFactory
 from common.schemas.worker import VectorDBCollectionConfig
 from common.utils.redis_client import get_key, set_key
 
