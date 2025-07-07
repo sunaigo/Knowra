@@ -12,7 +12,6 @@ import { columns } from "./columns"
 import { get, del } from "@/lib/request"
 import { Model } from "@/schemas/model"
 import { Button } from "@/components/ui/button"
-import { PlusIcon } from "@radix-ui/react-icons"
 import Link from "next/link"
 import { useState, useCallback, useEffect } from "react"
 import {
@@ -88,7 +87,7 @@ export default function ModelsPage() {
             <CardDescription>{t('model.desc')}</CardDescription>
           </div>
           <Button asChild>
-            <Link href="/models/create">
+            <Link href="/model/create">
               <PlusCircle className="mr-2 h-4 w-4" />
               {t('model.add')}
             </Link>

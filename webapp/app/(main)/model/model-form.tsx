@@ -121,15 +121,19 @@ export default function ModelForm({ initialData }: ModelFormProps) {
       return
     }
 
+    const selectedConnection = connections?.find(conn => conn.id === selectedConnectionId)
+    if (!selectedConnection) {
+      toast.error(t('model.selectConnection'))
+      return
+    }
+
     setTestStatus("loading")
     setTestError(null)
 
-    const url = `/connections/${selectedConnectionId}/test?model_name=${encodeURIComponent(
-      currentModelName
-    )}`
+    const url = `/connections/${selectedConnectionId}/test`
 
     try {
-      await post(url, {})
+      await post(url, { model_name: currentModelName })
       setTestStatus("success")
       toast.success(t('model.testSuccess'))
     } catch (err) {
@@ -155,7 +159,7 @@ export default function ModelForm({ initialData }: ModelFormProps) {
         await post("/models", values)
         toast.success(t('model.createSuccess'))
       }
-      router.push("/models")
+      router.push("/model")
       router.refresh() // To ensure the list is updated
     } catch (error) {
       let msg = "An unexpected error occurred.";

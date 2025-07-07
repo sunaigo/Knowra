@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useRef } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { Upload, FileUp, X, Loader2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -122,9 +122,9 @@ const FileStatusBadge = ({
 }
 
 export default function DocumentsUploadPage() {
+  const params = useParams()
+  const kb_id = params.kb_id as string
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const kb_id = searchParams.get("kb_id")
   const [files, setFiles] = useState<UploadableFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -217,7 +217,7 @@ export default function DocumentsUploadPage() {
             multiple
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={handleFileChange}
-            accept=".txt,.pdf"
+            accept=".txt,.pdf,.docx"
             disabled={isUploading}
           />
           <div className="flex flex-col items-center justify-center space-y-2">

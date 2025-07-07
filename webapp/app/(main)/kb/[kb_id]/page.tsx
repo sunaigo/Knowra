@@ -321,7 +321,7 @@ export default function KnowledgeBasePage() {
               <Edit className="mr-2 h-4 w-4" />
               {t('documentList.buttonEdit')}
             </Button>
-            <Button onClick={() => router.push("/documents/upload?kb_id=" + kb_id)}>
+            <Button onClick={() => router.push(`/kb/${kb_id}/documents/upload`)}>
               <PlusCircle className="mr-2 h-4 w-4" />
               {t('documentList.buttonUploadDocument')}
             </Button>

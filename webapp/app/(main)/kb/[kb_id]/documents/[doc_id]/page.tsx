@@ -88,12 +88,6 @@ export default function DocumentChunksPage() {
   const page = Number(searchParams.get("page")) || 1
   const limit = Number(searchParams.get("limit")) || 10
 
-  const chunksUrl = doc_id
-    ? `/docs/${doc_id}/chunks?page=${page}&limit=${limit}`
-    : null
-  const documentUrl = doc_id ? `/docs/${doc_id}` : null
-  const kbUrl = kb_id ? `/kb/${kb_id}` : null
-
   const [chunksData, setChunksData] = useState<ChunksResponse | null>(null)
   const [documentData, setDocumentData] = useState<Doc | null>(null)
   const [kbData, setKbData] = useState<KnowledgeBase | null>(null)
