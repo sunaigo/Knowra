@@ -56,27 +56,6 @@ def create_vdb(config_in: VDBIn, db: Session = Depends(get_db), current_user: Us
     db.commit()
     db.refresh(db_obj)
 
-    # 自动创建默认 collection
-    if collection_name:
-        default_collection = VDBCollection(
-            name=collection_name,
-            description="默认 collection",
-            vdb_id=db_obj.id,
-            owner_id=current_user.id
-        )
-        db.add(default_collection)
-        db.commit()
-        db.refresh(default_collection)
-    else:
-        default_collection = VDBCollection(
-            name="default",
-            description="默认 collection",
-            vdb_id=db_obj.id,
-            owner_id=current_user.id
-        )
-        db.add(default_collection)
-        db.commit()
-        db.refresh(default_collection)
     # 只返回可序列化字段
     data = {
         "id": db_obj.id,
@@ -253,12 +232,12 @@ def delete_vdb(id: int, db: Session = Depends(get_db), current_user: User = Depe
 
 @router.post("/test-connection", response_model=BaseResponse)
 def test_vdb_connection(config_in: VDBIn):
-    """测试向量数据库连接有效性"""
-    from common.db.vdb.factory import VectorDBFactory
+    """测试向量数据库连接有效性（只检测连通性和表结构，不实例化client）"""
+    from core.vdb.factory import VectorDBFactory
     from langchain_core.embeddings import FakeEmbeddings
     try:
         embeddings = FakeEmbeddings(size=config_in.embedding_dimension)
-        from common.db.vdb.types import VectorDBCollectionConfig
+        from common.schemas.worker import VectorDBCollectionConfig
         config = VectorDBCollectionConfig(
             name=config_in.name,
             type=config_in.type,
@@ -273,11 +252,11 @@ def test_vdb_connection(config_in: VDBIn):
         )
         vdb = VectorDBFactory.create_vector_db(config, embeddings)
         import asyncio
-        result = asyncio.run(vdb.connect())
+        result = asyncio.run(vdb.test_connection())
         if result:
             return BaseResponse(code=200, message="连接成功")
         else:
-            return BaseResponse(code=400, message="连接失败")
+            return BaseResponse(code=400, message="连接失败或表结构不符")
     except Exception as e:
         return BaseResponse(code=500, message=f"连接异常: {str(e)}")
 

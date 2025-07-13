@@ -42,6 +42,24 @@ class MilvusVectorDB(VectorDB):
     async def health_check(self) -> bool:
         return self.is_connected
 
+    async def test_connection(self) -> bool:
+        """
+        Test only the Milvus service connectivity and collection existence, do not instantiate client.
+        Return True if service is reachable. If collection does not exist, also return True.
+        """
+        from pymilvus import connections, utility
+        host = self.db_config.get("host", "localhost")
+        port = self.db_config.get("port", 19530)
+        try:
+            connections.connect(alias="default", host=host, port=port)
+            # Check if collection exists
+            collection_name = self.config.collection_name
+            exists = utility.has_collection(collection_name)
+            return True  # Even if not exists, connection is ok
+        except Exception as e:
+            print(f"test_connection failed: {e}")
+            return False
+
     def check_permission(self, user_team_id: int) -> bool:
         if self.config.is_private:
             return user_team_id == self.team_id

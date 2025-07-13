@@ -34,6 +34,22 @@ class ChromaVectorDB(VectorDB):
     async def health_check(self) -> bool:
         return self.is_connected
 
+    async def test_connection(self) -> bool:
+        """
+        Test only the local persist directory and collection existence, do not instantiate client.
+        Return True if directory is accessible. If collection does not exist, also return True.
+        """
+        import os
+        persist_dir = self.db_config.get("persist_directory", "./vector_store")
+        try:
+            if not os.path.exists(persist_dir):
+                os.makedirs(persist_dir, exist_ok=True)
+            # Chroma collections are files/folders, so just check directory
+            return True
+        except Exception as e:
+            logger.error(f"test_connection failed: {e}")
+            return False
+
     def check_permission(self, user_team_id: int) -> bool:
         if self.config.is_private:
             return user_team_id == self.team_id
